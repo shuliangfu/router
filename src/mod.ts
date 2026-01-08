@@ -10,6 +10,9 @@
  * - 特殊文件处理：_app.tsx、_layout.tsx、_404.tsx、_error.tsx、_middleware.ts
  * - 服务端路由匹配：路由参数解析、查询参数解析、SSR 支持
  *
+ * 环境兼容性：
+ * - 服务端：✅ 支持（Deno 和 Bun 运行时）
+ *
  * @example
  * ```typescript
  * import { createRouter } from "jsr:@dreamer/router";
@@ -25,6 +28,9 @@
  * const match = router.match("/user/123");
  * ```
  */
+
+// 导入 runtime-adapter 提供的文件系统 API（兼容 Deno 和 Bun）
+import { cwd, readdir, stat } from "@dreamer/runtime-adapter";
 
 /**
  * 路由配置选项
@@ -142,26 +148,27 @@ export class Router {
     relativePath: string,
   ): Promise<void> {
     try {
-      const entries = await Array.fromAsync(Deno.readDir(dirPath));
+      const entries = await readdir(dirPath);
 
       for (const entry of entries) {
         const fullPath = `${dirPath}/${entry.name}`;
-        const stat = await Deno.stat(fullPath);
+        const fileStat = await stat(fullPath);
 
-        if (stat.isDirectory) {
+        if (fileStat.isDirectory) {
           // 递归扫描子目录
           await this.scanDirectory(
             fullPath,
             relativePath ? `${relativePath}/${entry.name}` : entry.name,
           );
-        } else if (stat.isFile) {
+        } else if (fileStat.isFile) {
           // 处理文件
           this.processFile(fullPath, relativePath, entry.name);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       // 目录不存在时忽略错误（允许空目录）
-      if (!(error instanceof Deno.errors.NotFound)) {
+      // 检查是否是文件不存在的错误（Deno 和 Bun 的错误码不同）
+      if (error?.code !== "ENOENT" && error?.name !== "NotFound") {
         throw error;
       }
     }
@@ -484,9 +491,16 @@ export class Router {
     try {
       // 动态导入模块
       // 注意：filePath 需要转换为 file:// URL 格式
-      const moduleUrl = filePath.startsWith("file://")
-        ? filePath
-        : `file://${Deno.cwd()}/${filePath}`;
+      let moduleUrl: string;
+      if (filePath.startsWith("file://")) {
+        moduleUrl = filePath;
+      } else if (filePath.startsWith("/") || filePath.match(/^[A-Za-z]:/)) {
+        // 绝对路径（Unix 或 Windows）
+        moduleUrl = `file://${filePath}`;
+      } else {
+        // 相对路径，需要加上当前工作目录
+        moduleUrl = `file://${cwd()}/${filePath}`;
+      }
 
       const module = await import(moduleUrl);
 
