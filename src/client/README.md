@@ -1,6 +1,11 @@
 # @dreamer/router/client
 
-一个用于浏览器的路由导航库，提供客户端路由导航功能，支持 SPA 应用的路由管理。
+> 一个用于浏览器的路由导航库，提供客户端路由导航功能，支持 SPA 应用的路由管理
+
+[![JSR](https://jsr.io/badges/@dreamer/router/client)](https://jsr.io/@dreamer/router/client)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
 
 ## 服务端支持
 
@@ -31,11 +36,16 @@
 
 ### 路由类型支持
 
-- **静态路由**：`/about` → 精确匹配
-- **动态路由**：`/user/:id` → 匹配 `/user/123`，提取 `{ id: "123" }`
-- **通配符路由**：`/posts/*` → 匹配 `/posts/any/path/here`，提取 `{ "*": "any/path/here" }`
-- **可选参数路由**：`/blog/:slug?` → 匹配 `/blog` 或 `/blog/my-post`，提取 `{ slug?: "my-post" }`
-- **查询参数解析**：自动解析 URL 查询参数（`?key=value`）
+- **静态路由**：
+  - `/about` → 精确匹配
+- **动态路由**：
+  - `/user/:id` → 匹配 `/user/123`，提取 `{ id: "123" }`
+- **通配符路由**：
+  - `/posts/*` → 匹配 `/posts/any/path/here`，提取 `{ "*": "any/path/here" }`
+- **可选参数路由**：
+  - `/blog/:slug?` → 匹配 `/blog` 或 `/blog/my-post`，提取 `{ slug?: "my-post" }`
+- **查询参数解析**：
+  - 自动解析 URL 查询参数（`?key=value`）
 
 ### 路由守卫
 
@@ -82,7 +92,7 @@ deno add jsr:@dreamer/router/client
 - **依赖**：无外部依赖（纯 TypeScript 实现）
 - **浏览器要求**：支持 `history.pushState` 和 `popstate` 事件的现代浏览器
 
-## 使用示例
+## 🚀 快速开始
 
 ### 基本使用（创建路由和导航）
 
@@ -305,86 +315,9 @@ if (currentRoute) {
 }
 ```
 
-### 完整示例：SPA 应用
+---
 
-```typescript
-import { createRouter, ClientRouteMatch } from "jsr:@dreamer/router/client";
-
-// 路由配置（通常由服务端生成）
-const routes = [
-  { path: "/", component: "index", type: "static" },
-  { path: "/about", component: "about", type: "static" },
-  { path: "/user/:id", component: "user/[id]", type: "dynamic" },
-  { path: "/posts/*", component: "posts/[...slug]", type: "wildcard" },
-];
-
-// 创建路由
-const router = createRouter({
-  routes,
-  framework: "preact",
-});
-
-// 路由守卫：登录检查
-router.beforeRoute((to, from) => {
-  if (to.route.path.startsWith("/admin") && !isLoggedIn()) {
-    router.navigate("/login");
-    return false;
-  }
-  return true;
-});
-
-// 路由守卫：页面追踪
-router.afterRoute((to) => {
-  analytics.track("page_view", { path: to.route.path });
-});
-
-// 路由变化监听
-router.onRouteChange(async (match) => {
-  if (!match) {
-    // 404 处理
-    render404();
-    return;
-  }
-
-  // 加载并渲染组件
-  try {
-    const Component = await loadComponent(match.route.component);
-    render(<Component params={match.params} query={match.query} />);
-  } catch (error) {
-    console.error("加载组件失败:", error);
-    renderError(error);
-  }
-});
-
-// 初始化：匹配当前路由
-const initialMatch = router.match(window.location.pathname);
-if (initialMatch) {
-  router.onRouteChange((match) => {
-    // 已经在上面监听了，这里会立即触发
-  });
-}
-
-// 导航函数（可以在组件中使用）
-function navigateTo(path: string) {
-  router.navigate(path);
-}
-
-// 在组件中使用
-function App() {
-  return (
-    <div>
-      <nav>
-        <button onClick={() => navigateTo("/")}>首页</button>
-        <button onClick={() => navigateTo("/about")}>关于</button>
-        <button onClick={() => navigateTo("/user/123")}>用户</button>
-      </nav>
-      <main id="app-root"></main>
-    </div>
-  );
-}
-```
-
-## API 文档
+## 📚 API 文档
 
 ### `createRouter(options: ClientRouterOptions): ClientRouter`
 
@@ -667,10 +600,32 @@ match.load = () => loadComponent(match.route.component);
 
 两者使用相同的路由配置，确保服务端和客户端路由一致。
 
-## 备注
+---
+
+## 📝 备注
 
 - **纯浏览器 API 实现**：使用 `globalThis.location`、`globalThis.history` 等浏览器原生 API
 - **不依赖服务端 API**：客户端代码不包含任何服务端依赖（如 `path` 模块）
 - **统一接口**：与服务端使用相似的 API 接口，降低学习成本
 - **类型安全**：完整的 TypeScript 类型支持
 - **无外部依赖**：纯 TypeScript 实现，不依赖任何外部库
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+---
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE.md](../../../LICENSE.md)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by Dreamer Team**
+
+</div>

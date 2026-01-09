@@ -1,8 +1,13 @@
 # @dreamer/router
 
-一个用于 Deno 的文件路由系统，提供统一的文件路由接口，支持服务端路由匹配。
+> 一个兼容 Deno 和 Bun 的文件路由系统，提供统一的文件路由接口，支持服务端路由匹配
 
-## 功能
+[![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
+## 🎯 功能
 
 文件路由系统，提供统一的文件路由抽象层，支持服务端路由匹配（SSR）。
 
@@ -47,7 +52,7 @@
 
 **所有 @dreamer/* 库都遵循以下原则**：
 
-- **主包（@dreamer/xxx）**：用于服务端（Deno 运行时）
+- **主包（@dreamer/xxx）**：用于服务端（兼容 Deno 和 Bun 运行时）
 - **客户端子包（@dreamer/xxx/client）**：用于客户端（浏览器环境）
 
 这样可以：
@@ -65,11 +70,6 @@
 - **路由文件扫描**：扫描和注册路由文件
 - **服务端路由处理**：使用服务端 API 处理路由
 
-
-## 优先级
-
-⭐⭐⭐⭐⭐
-
 ## 安装
 
 ### 服务端
@@ -81,8 +81,8 @@ deno add jsr:@dreamer/router
 
 ## 环境兼容性
 
-- **Deno 版本**：要求 Deno 2.5 或更高版本
-- **服务端**：✅ 支持（Deno 运行时，SSR 路由匹配、API 路由）
+- **运行时要求**：Deno 2.5+ 或 Bun 1.0+
+- **服务端**：✅ 支持（兼容 Deno 和 Bun 运行时，SSR 路由匹配、API 路由）
   - 使用 Deno 文件系统 API 扫描路由文件
   - 支持服务端路由匹配和 SSR 渲染
   - 支持 API 路由处理（仅服务端运行）
@@ -90,7 +90,9 @@ deno add jsr:@dreamer/router
 - **客户端**：✅ 支持（浏览器环境，通过 `jsr:@dreamer/router/client` 使用客户端路由导航）
 - **依赖**：无外部依赖（纯 TypeScript 实现）
 
-## 使用示例
+---
+
+## 🚀 快速开始
 
 ### 服务端路由
 
@@ -548,11 +550,7 @@ import { createRouter } from "jsr:@dreamer/router/client";
 | **服务端 API** | ✅ 可以使用（path、fs 等） | ❌ 不能使用 |
 | **浏览器 API** | ❌ 不能使用 | ✅ 可以使用（window.location、history 等） |
 
-## 状态
-
-🚧 **开发中**
-
-## 备注
+## 📝 备注
 
 - **服务端和客户端分离**：通过 `/client` 子路径明确区分服务端和客户端代码
 - **服务端**：专注于路由文件扫描、SSR 路由匹配、API 路由处理
@@ -560,3 +558,23 @@ import { createRouter } from "jsr:@dreamer/router/client";
 - **统一接口**：服务端和客户端使用相似的 API 接口，降低学习成本
 - **类型安全**：完整的 TypeScript 类型支持
 - **无外部依赖**：纯 TypeScript 实现
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+---
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE.md](./LICENSE.md)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by Dreamer Team**
+
+</div>
