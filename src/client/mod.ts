@@ -33,6 +33,7 @@
 interface BrowserGlobalThis {
   location?: {
     pathname: string;
+    search: string;
     href: string;
     protocol: string;
     host: string;
@@ -104,6 +105,11 @@ export type RouteGuard = (
  * 客户端路由器类
  * 提供客户端路由导航、匹配等功能
  */
+/**
+ * 组件加载器函数类型
+ */
+export type ComponentLoader = (component: string) => Promise<unknown>;
+
 export class ClientRouter {
   private routes: ClientRoute[] = [];
   private options: Required<Pick<ClientRouterOptions, "engine">>;
@@ -111,6 +117,8 @@ export class ClientRouter {
   private routeChangeCallbacks: RouteChangeCallback[] = [];
   private beforeRouteGuards: RouteGuard[] = [];
   private afterRouteGuards: RouteGuard[] = [];
+  private popstateHandler: (() => void) | null = null;
+  private componentLoader: ComponentLoader | null = null;
 
   /**
    * 创建客户端路由器实例
@@ -133,9 +141,10 @@ export class ClientRouter {
     // 使用 popstate 事件监听浏览器前进/后退
     const browserGlobal = globalThis as unknown as BrowserGlobalThis;
     if (typeof globalThis !== "undefined" && browserGlobal.addEventListener) {
-      browserGlobal.addEventListener("popstate", () => {
+      this.popstateHandler = () => {
         this.handleRouteChange();
-      });
+      };
+      browserGlobal.addEventListener("popstate", this.popstateHandler);
     }
   }
 
@@ -146,11 +155,11 @@ export class ClientRouter {
     const pathname = this.getPathname();
     const match = this.match(pathname);
 
-    // 执行路由守卫
-    const canNavigate = await this.executeBeforeGuards(
-      match,
-      this.currentMatch,
-    );
+    // 保存旧的匹配结果（用于后置守卫）
+    const previousMatch = this.currentMatch;
+
+    // 执行前置守卫
+    const canNavigate = await this.executeBeforeGuards(match, previousMatch);
     if (!canNavigate) {
       return;
     }
@@ -158,8 +167,8 @@ export class ClientRouter {
     // 更新当前匹配
     this.currentMatch = match;
 
-    // 执行后置守卫
-    await this.executeAfterGuards(match, this.currentMatch);
+    // 执行后置守卫（使用保存的旧匹配作为 from）
+    await this.executeAfterGuards(match, previousMatch);
 
     // 触发路由变化回调
     this.notifyRouteChange(match);
@@ -214,13 +223,15 @@ export class ClientRouter {
   }
 
   /**
-   * 获取当前路径
-   * @returns 当前路径
+   * 获取当前路径（包含查询参数）
+   * @returns 当前路径，格式如 /path?query=value
    */
   private getPathname(): string {
     const browserGlobal = globalThis as unknown as BrowserGlobalThis;
     if (typeof globalThis !== "undefined" && browserGlobal.location) {
-      return browserGlobal.location.pathname;
+      // 返回 pathname + search 以便正确解析查询参数
+      const { pathname, search } = browserGlobal.location;
+      return search ? `${pathname}${search}` : pathname;
     }
     return "/";
   }
@@ -344,10 +355,12 @@ export class ClientRouter {
    * @param component 组件标识
    * @returns 组件模块
    */
-  private loadComponent(component: string): Promise<any> {
-    // 这里应该根据 component 标识动态加载组件
-    // 实际实现需要根据构建工具和框架来定制
-    // 这里返回一个占位符，实际使用时需要替换为真实的组件加载逻辑
+  private loadComponent(component: string): Promise<unknown> {
+    // 如果设置了自定义组件加载器，使用它
+    if (this.componentLoader) {
+      return this.componentLoader(component);
+    }
+    // 否则返回错误，需要用户设置加载器
     return Promise.reject(
       new Error(
         `组件加载功能需要根据构建工具实现: ${component}`,
@@ -356,11 +369,27 @@ export class ClientRouter {
   }
 
   /**
+   * 设置自定义组件加载器
+   * @param loader 组件加载函数
+   * @example
+   * ```typescript
+   * router.setComponentLoader(async (component) => {
+   *   // 根据 component 路径动态导入
+   *   return await import(`./pages/${component}.tsx`);
+   * });
+   * ```
+   */
+  setComponentLoader(loader: ComponentLoader): void {
+    this.componentLoader = loader;
+  }
+
+  /**
    * 导航到指定路径
    * @param path 路径
    * @param replace 是否替换当前历史记录（默认：false）
+   * @returns Promise，在路由变化处理完成后 resolve
    */
-  navigate(path: string, replace = false): void {
+  async navigate(path: string, replace = false): Promise<void> {
     const browserGlobal = globalThis as unknown as BrowserGlobalThis;
     if (typeof globalThis === "undefined" || !browserGlobal.history) {
       throw new Error("浏览器环境不支持 history API");
@@ -372,8 +401,8 @@ export class ClientRouter {
       browserGlobal.history.pushState(null, "", path);
     }
 
-    // 触发路由变化
-    this.handleRouteChange();
+    // 触发路由变化并等待完成
+    await this.handleRouteChange();
   }
 
   /**
@@ -468,6 +497,91 @@ export class ClientRouter {
    */
   getRoutes(): ClientRoute[] {
     return [...this.routes];
+  }
+
+  /**
+   * 获取当前渲染引擎
+   * @returns 渲染引擎类型
+   */
+  getEngine(): "preact" | "react" | "vue3" {
+    return this.options.engine;
+  }
+
+  /**
+   * 动态添加路由
+   * @param route 路由配置
+   */
+  addRoute(route: ClientRoute): void {
+    this.routes.push(route);
+  }
+
+  /**
+   * 动态移除路由
+   * @param path 路由路径
+   * @returns 是否成功移除
+   */
+  removeRoute(path: string): boolean {
+    const index = this.routes.findIndex((r) => r.path === path);
+    if (index > -1) {
+      this.routes.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 移除路由前置守卫
+   * @param guard 守卫函数
+   * @returns 是否成功移除
+   */
+  removeBeforeRoute(guard: RouteGuard): boolean {
+    const index = this.beforeRouteGuards.indexOf(guard);
+    if (index > -1) {
+      this.beforeRouteGuards.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 移除路由后置守卫
+   * @param guard 守卫函数
+   * @returns 是否成功移除
+   */
+  removeAfterRoute(guard: RouteGuard): boolean {
+    const index = this.afterRouteGuards.indexOf(guard);
+    if (index > -1) {
+      this.afterRouteGuards.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 销毁路由器
+   * 移除所有事件监听器和回调函数
+   */
+  destroy(): void {
+    // 移除 popstate 监听器
+    if (this.popstateHandler) {
+      const browserGlobal = globalThis as unknown as {
+        removeEventListener?: (
+          type: string,
+          listener: () => void,
+        ) => void;
+      };
+      if (browserGlobal.removeEventListener) {
+        browserGlobal.removeEventListener("popstate", this.popstateHandler);
+      }
+      this.popstateHandler = null;
+    }
+
+    // 清除所有回调和守卫
+    this.routeChangeCallbacks = [];
+    this.beforeRouteGuards = [];
+    this.afterRouteGuards = [];
+    this.currentMatch = null;
+    this.componentLoader = null;
   }
 }
 
