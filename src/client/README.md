@@ -109,7 +109,7 @@ const router = createRouter({
     { path: "/posts/*", component: "posts/[...slug]", type: "wildcard" },
     { path: "/blog/:slug?", component: "blog/[[slug]]", type: "optional" },
   ],
-  framework: "preact", // 或 "react"
+  engine: "preact", // 或 "react"、"vue3"
 });
 
 // 导航到指定路径
@@ -325,7 +325,7 @@ if (currentRoute) {
 
 **参数：**
 - `options.routes` - 路由配置列表（由服务端生成）
-- `options.framework` - 框架类型（`"preact"` 或 `"react"`，默认：`"preact"`）
+- `options.engine` - 渲染引擎类型（`"preact"`、`"react"` 或 `"vue3"`，默认：`"preact"`）
 
 **返回：** `ClientRouter` 实例
 
@@ -336,7 +336,7 @@ const router = createRouter({
     { path: "/", component: "index" },
     { path: "/about", component: "about" },
   ],
-  framework: "preact",
+  engine: "preact",
 });
 ```
 
@@ -464,8 +464,8 @@ router.afterRoute((to) => {
 interface ClientRouterOptions {
   /** 路由配置列表（由服务端生成） */
   routes: ClientRoute[];
-  /** 框架类型（preact 或 react，默认：preact） */
-  framework?: "preact" | "react";
+  /** 渲染引擎类型（preact、react 或 vue3，默认：preact） */
+  engine?: "preact" | "react" | "vue3";
 }
 ```
 

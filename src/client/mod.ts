@@ -20,13 +20,12 @@
  *     { path: "/about", component: "about" },
  *     { path: "/user/:id", component: "user/[id]" },
  *   ],
- *   framework: "preact",
+ *   engine: "preact",
  * });
  *
  * router.navigate("/about");
  * ```
  */
-
 
 /**
  * 浏览器全局对象类型扩展
@@ -58,8 +57,8 @@ interface BrowserGlobalThis {
 export interface ClientRouterOptions {
   /** 路由配置列表（由服务端生成） */
   routes: ClientRoute[];
-  /** 框架类型（preact 或 react，默认：preact） */
-  framework?: "preact" | "react";
+  /** 渲染引擎类型（preact、react 或 vue3，默认：preact） */
+  engine?: "preact" | "react" | "vue3";
 }
 
 /**
@@ -107,7 +106,7 @@ export type RouteGuard = (
  */
 export class ClientRouter {
   private routes: ClientRoute[] = [];
-  private options: Required<Pick<ClientRouterOptions, "framework">>;
+  private options: Required<Pick<ClientRouterOptions, "engine">>;
   private currentMatch: ClientRouteMatch | null = null;
   private routeChangeCallbacks: RouteChangeCallback[] = [];
   private beforeRouteGuards: RouteGuard[] = [];
@@ -120,7 +119,7 @@ export class ClientRouter {
   constructor(options: ClientRouterOptions) {
     this.routes = options.routes || [];
     this.options = {
-      framework: options.framework || "preact",
+      engine: options.engine || "preact",
     };
 
     // 监听浏览器历史记录变化
