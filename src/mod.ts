@@ -9,6 +9,9 @@
  * - API 路由支持：RESTful 形式（HTTP 方法）和操作方法形式（函数名）
  * - 特殊文件处理：_app.tsx、_layout.tsx、_404.tsx、_error.tsx、_middleware.ts
  * - 服务端路由匹配：路由参数解析、查询参数解析、SSR 支持
+ * - 路由重定向：支持路由级别的重定向配置
+ * - 中间件链：支持多个中间件链式执行
+ * - 路由元数据：支持为路由添加自定义元数据
  *
  * 环境兼容性：
  * - 服务端：✅ 支持（Deno 和 Bun 运行时）
@@ -22,15 +25,74 @@
  *   framework: "preact",
  *   ssr: true,
  *   apiMode: "restful",
+ *   redirects: [
+ *     { source: "/old-page", destination: "/new-page", permanent: true },
+ *   ],
  * });
  *
  * await router.scan();
- * const match = router.match("/user/123");
+ * const match = await router.match("/user/123");
  * ```
  */
 
 // 导入 runtime-adapter 提供的文件系统 API（兼容 Deno 和 Bun）
 import { cwd, readdir, stat } from "@dreamer/runtime-adapter";
+
+// ============================================================================
+// 类型定义
+// ============================================================================
+
+/**
+ * 路由元数据类型
+ */
+export interface RouteMeta {
+  /** 页面标题 */
+  title?: string;
+  /** 是否需要认证 */
+  requiresAuth?: boolean;
+  /** 缓存策略 */
+  cache?: "no-store" | "force-cache" | number;
+  /** 自定义数据 */
+  [key: string]: unknown;
+}
+
+/**
+ * 重定向配置
+ */
+export interface RedirectConfig {
+  /** 源路径（支持动态参数，如 /old/:id） */
+  source: string;
+  /** 目标路径（支持参数引用，如 /new/:id） */
+  destination: string;
+  /** 是否为永久重定向（301），默认 false（302） */
+  permanent?: boolean;
+  /** 状态码（覆盖 permanent 设置） */
+  statusCode?: 301 | 302 | 303 | 307 | 308;
+}
+
+/**
+ * 中间件上下文
+ */
+export interface MiddlewareContext {
+  /** 请求对象 */
+  request: Request;
+  /** 路由参数 */
+  params: Record<string, string>;
+  /** 查询参数 */
+  query: Record<string, string>;
+  /** 匹配的路由 */
+  route: Route | null;
+  /** 自定义数据（可在中间件间传递） */
+  data: Record<string, unknown>;
+}
+
+/**
+ * 中间件函数类型
+ */
+export type MiddlewareFunction = (
+  context: MiddlewareContext,
+  next: () => Promise<Response>,
+) => Promise<Response> | Response;
 
 /**
  * 路由配置选项
@@ -44,6 +106,12 @@ export interface RouterOptions {
   ssr?: boolean;
   /** API 路由形式（restful 或 action，默认：restful） */
   apiMode?: "restful" | "action";
+  /** 重定向配置列表 */
+  redirects?: RedirectConfig[];
+  /** 全局中间件列表 */
+  middlewares?: MiddlewareFunction[];
+  /** 是否跳过 _app.tsx 验证（默认：false） */
+  skipAppValidation?: boolean;
 }
 
 /**
@@ -69,6 +137,8 @@ export interface Route {
   isSpecial: boolean;
   /** 特殊文件类型（如果有） */
   specialType?: "_app" | "_layout" | "_404" | "_error" | "_middleware";
+  /** 路由元数据 */
+  meta?: RouteMeta;
 }
 
 /**
@@ -81,14 +151,29 @@ export interface RouteMatch {
   params: Record<string, string>;
   /** 查询参数 */
   query: Record<string, string>;
+  /** 完整路径 */
+  fullPath: string;
   /** 是否为 API 路由 */
   isApi: boolean;
+  /** 路由元数据 */
+  meta: RouteMeta;
   /** API 处理函数（如果是 API 路由） */
   handlers?: Record<
     string,
     (request: Request, context?: any) => Promise<Response> | Response
   >;
+  /** 加载页面组件 */
+  load?: () => Promise<any>;
+  /** 重定向信息（如果需要重定向） */
+  redirect?: {
+    destination: string;
+    statusCode: number;
+  };
 }
+
+// ============================================================================
+// 路由器类
+// ============================================================================
 
 /**
  * 文件路由路由器类
@@ -96,8 +181,13 @@ export interface RouteMatch {
  */
 export class Router {
   private routes: Route[] = [];
-  private options: Required<RouterOptions>;
+  private options: Required<Omit<RouterOptions, "redirects" | "middlewares" | "skipAppValidation">> & {
+    redirects: RedirectConfig[];
+    middlewares: MiddlewareFunction[];
+    skipAppValidation: boolean;
+  };
   private specialFiles: Map<string, string> = new Map();
+  private moduleCache: Map<string, any> = new Map();
 
   /**
    * 创建路由器实例
@@ -109,16 +199,24 @@ export class Router {
       ssr: options.ssr !== false,
       apiMode: options.apiMode || "restful",
       routesDir: options.routesDir,
+      redirects: options.redirects || [],
+      middlewares: options.middlewares || [],
+      skipAppValidation: options.skipAppValidation || false,
     };
   }
 
+  // ==========================================================================
+  // 公共方法
+  // ==========================================================================
+
   /**
    * 扫描路由文件
-   * 使用 Deno 文件系统 API 扫描 routesDir 目录，生成路由配置
+   * 使用文件系统 API 扫描 routesDir 目录，生成路由配置
    */
   async scan(): Promise<void> {
     this.routes = [];
     this.specialFiles.clear();
+    this.moduleCache.clear();
 
     try {
       await this.scanDirectory(this.options.routesDir, "");
@@ -130,8 +228,8 @@ export class Router {
       );
     }
 
-    // 验证 _app.tsx 是否存在
-    if (!this.specialFiles.has("_app")) {
+    // 验证 _app.tsx 是否存在（可配置跳过）
+    if (!this.options.skipAppValidation && !this.specialFiles.has("_app")) {
       throw new Error(
         `缺少必需的特殊文件: _app.tsx（必须在 ${this.options.routesDir} 目录下）`,
       );
@@ -139,9 +237,329 @@ export class Router {
   }
 
   /**
+   * 匹配路由
+   * @param pathname 路径（如 /user/123）
+   * @param options 匹配选项
+   * @returns 路由匹配结果或 null
+   */
+  async match(
+    pathname: string,
+    options?: { method?: string; request?: Request },
+  ): Promise<RouteMatch | null> {
+    // 解析查询参数
+    const url = new URL(pathname, "http://localhost");
+    const query: Record<string, string> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      query[key] = value;
+    }
+
+    const cleanPath = url.pathname;
+
+    // 首先检查重定向
+    const redirectResult = this.checkRedirects(cleanPath);
+    if (redirectResult) {
+      return {
+        route: {
+          path: cleanPath,
+          file: "",
+          fullPath: "",
+          type: "static",
+          isApi: false,
+          isSpecial: false,
+        },
+        params: {},
+        query,
+        fullPath: pathname,
+        isApi: false,
+        meta: {},
+        redirect: redirectResult,
+      };
+    }
+
+    // 尝试匹配 API 路由
+    if (options?.method || cleanPath.startsWith("/api/")) {
+      const apiMatch = await this.matchApiRoute(cleanPath, options?.method);
+      if (apiMatch) {
+        return {
+          ...apiMatch,
+          query,
+          fullPath: pathname,
+          meta: apiMatch.route.meta || {},
+        };
+      }
+    }
+
+    // 匹配普通路由
+    for (const route of this.routes) {
+      if (route.isApi) continue;
+
+      const match = this.matchRoute(route, cleanPath);
+      if (match) {
+        return {
+          route,
+          params: match.params,
+          query,
+          fullPath: pathname,
+          isApi: false,
+          meta: route.meta || {},
+          load: () => this.loadModule(route.fullPath),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 处理请求（包含中间件链执行）
+   * @param request 请求对象
+   * @param handler 最终处理函数
+   * @returns 响应对象
+   */
+  async handleRequest(
+    request: Request,
+    handler: (match: RouteMatch | null, context: MiddlewareContext) => Promise<Response>,
+  ): Promise<Response> {
+    const url = new URL(request.url);
+    const match = await this.match(url.pathname + url.search, {
+      method: request.method,
+      request,
+    });
+
+    // 创建中间件上下文
+    const context: MiddlewareContext = {
+      request,
+      params: match?.params || {},
+      query: match?.query || {},
+      route: match?.route || null,
+      data: {},
+    };
+
+    // 加载路由级别的中间件
+    const routeMiddlewares = await this.loadRouteMiddlewares(match?.route);
+
+    // 合并全局中间件和路由中间件
+    const allMiddlewares = [...this.options.middlewares, ...routeMiddlewares];
+
+    // 创建中间件链
+    const executeMiddlewareChain = async (index: number): Promise<Response> => {
+      if (index >= allMiddlewares.length) {
+        // 所有中间件执行完毕，执行最终处理函数
+        return await handler(match, context);
+      }
+
+      const middleware = allMiddlewares[index];
+      return await middleware(context, () => executeMiddlewareChain(index + 1));
+    };
+
+    return await executeMiddlewareChain(0);
+  }
+
+  /**
+   * 添加全局中间件
+   * @param middleware 中间件函数
+   */
+  use(middleware: MiddlewareFunction): void {
+    this.options.middlewares.push(middleware);
+  }
+
+  /**
+   * 添加重定向配置
+   * @param config 重定向配置
+   */
+  addRedirect(config: RedirectConfig): void {
+    this.options.redirects.push(config);
+  }
+
+  /**
+   * 获取所有路由
+   * @returns 路由列表
+   */
+  getRoutes(): Route[] {
+    return [...this.routes];
+  }
+
+  /**
+   * 获取客户端路由配置
+   * 用于服务端渲染时注入到客户端
+   * @returns 客户端路由配置数组
+   */
+  getClientRoutes(): Array<{
+    path: string;
+    component: string;
+    type: RouteType;
+    meta?: RouteMeta;
+  }> {
+    return this.routes
+      .filter((r) => !r.isApi && !r.isSpecial)
+      .map((r) => ({
+        path: r.path,
+        component: r.file.replace(/\.(tsx?|jsx?)$/, ""),
+        type: r.type,
+        meta: r.meta,
+      }));
+  }
+
+  /**
+   * 获取特殊文件路径
+   * @param type 特殊文件类型
+   * @returns 文件路径或 undefined
+   */
+  getSpecialFile(
+    type: "_app" | "_layout" | "_404" | "_error" | "_middleware",
+  ): string | undefined {
+    return this.specialFiles.get(type);
+  }
+
+  /**
+   * 加载模块
+   * @param filePath 文件路径
+   * @returns 模块
+   */
+  async loadModule(filePath: string): Promise<any> {
+    // 检查缓存
+    if (this.moduleCache.has(filePath)) {
+      return this.moduleCache.get(filePath);
+    }
+
+    const module = await this.importModule(filePath);
+    this.moduleCache.set(filePath, module);
+    return module;
+  }
+
+  /**
+   * 清除模块缓存
+   * @param filePath 文件路径（可选，不传则清除所有）
+   */
+  clearCache(filePath?: string): void {
+    if (filePath) {
+      this.moduleCache.delete(filePath);
+    } else {
+      this.moduleCache.clear();
+    }
+  }
+
+  /**
+   * 获取框架类型
+   */
+  getFramework(): "preact" | "react" {
+    return this.options.framework;
+  }
+
+  /**
+   * 获取 API 模式
+   */
+  getApiMode(): "restful" | "action" {
+    return this.options.apiMode;
+  }
+
+  /**
+   * 是否启用 SSR
+   */
+  isSSREnabled(): boolean {
+    return this.options.ssr;
+  }
+
+  // ==========================================================================
+  // 私有方法
+  // ==========================================================================
+
+  /**
+   * 检查重定向
+   */
+  private checkRedirects(pathname: string): { destination: string; statusCode: number } | null {
+    for (const redirect of this.options.redirects) {
+      const match = this.matchRedirectSource(redirect.source, pathname);
+      if (match) {
+        // 替换目标路径中的参数
+        let destination = redirect.destination;
+        for (const [key, value] of Object.entries(match.params)) {
+          destination = destination.replace(`:${key}`, value);
+        }
+
+        const statusCode = redirect.statusCode || (redirect.permanent ? 301 : 302);
+        return { destination, statusCode };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 匹配重定向源路径
+   */
+  private matchRedirectSource(
+    source: string,
+    pathname: string,
+  ): { params: Record<string, string> } | null {
+    const params: Record<string, string> = {};
+
+    // 精确匹配
+    if (!source.includes(":") && !source.includes("*")) {
+      return source === pathname ? { params } : null;
+    }
+
+    // 动态匹配
+    const sourceParts = source.split("/").filter(Boolean);
+    const pathParts = pathname.split("/").filter(Boolean);
+
+    // 通配符
+    if (source.endsWith("*")) {
+      const prefix = source.slice(0, -1);
+      if (pathname.startsWith(prefix)) {
+        params["*"] = pathname.slice(prefix.length);
+        return { params };
+      }
+      return null;
+    }
+
+    if (sourceParts.length !== pathParts.length) {
+      return null;
+    }
+
+    for (let i = 0; i < sourceParts.length; i++) {
+      const sourcePart = sourceParts[i];
+      const pathPart = pathParts[i];
+
+      if (sourcePart.startsWith(":")) {
+        const paramName = sourcePart.slice(1);
+        params[paramName] = pathPart;
+      } else if (sourcePart !== pathPart) {
+        return null;
+      }
+    }
+
+    return { params };
+  }
+
+  /**
+   * 加载路由级别的中间件
+   */
+  private async loadRouteMiddlewares(route: Route | null | undefined): Promise<MiddlewareFunction[]> {
+    if (!route) return [];
+
+    const middlewares: MiddlewareFunction[] = [];
+
+    // 查找路由目录下的 _middleware.ts
+    const routeDir = route.fullPath.substring(0, route.fullPath.lastIndexOf("/"));
+    const middlewarePath = `${routeDir}/_middleware.ts`;
+
+    try {
+      const module = await this.loadModule(middlewarePath);
+      if (module.default && typeof module.default === "function") {
+        middlewares.push(module.default);
+      }
+      if (module.middleware && typeof module.middleware === "function") {
+        middlewares.push(module.middleware);
+      }
+    } catch {
+      // 中间件文件不存在，忽略
+    }
+
+    return middlewares;
+  }
+
+  /**
    * 递归扫描目录
-   * @param dirPath 目录路径
-   * @param relativePath 相对路径（用于构建路由路径）
    */
   private async scanDirectory(
     dirPath: string,
@@ -155,19 +573,15 @@ export class Router {
         const fileStat = await stat(fullPath);
 
         if (fileStat.isDirectory) {
-          // 递归扫描子目录
           await this.scanDirectory(
             fullPath,
             relativePath ? `${relativePath}/${entry.name}` : entry.name,
           );
         } else if (fileStat.isFile) {
-          // 处理文件
           this.processFile(fullPath, relativePath, entry.name);
         }
       }
     } catch (error: any) {
-      // 目录不存在时忽略错误（允许空目录）
-      // 检查是否是文件不存在的错误（Deno 和 Bun 的错误码不同）
       if (error?.code !== "ENOENT" && error?.name !== "NotFound") {
         throw error;
       }
@@ -176,9 +590,6 @@ export class Router {
 
   /**
    * 处理路由文件
-   * @param fullPath 完整文件路径
-   * @param relativePath 相对路径
-   * @param fileName 文件名
    */
   private processFile(
     fullPath: string,
@@ -189,12 +600,18 @@ export class Router {
     if (fileName.startsWith("_")) {
       const specialType = this.getSpecialFileType(fileName);
       if (specialType) {
-        this.specialFiles.set(specialType, fullPath);
+        // 处理嵌套的特殊文件
+        const key = relativePath ? `${relativePath}/${specialType}` : specialType;
+        this.specialFiles.set(key, fullPath);
+        // 根目录的特殊文件也用简单 key 保存
+        if (!relativePath) {
+          this.specialFiles.set(specialType, fullPath);
+        }
       }
-      return; // 特殊文件不生成路由
+      return;
     }
 
-    // 检查是否为路由文件（.tsx 或 .ts）
+    // 检查是否为路由文件
     const isRouteFile = fileName.endsWith(".tsx") || fileName.endsWith(".ts");
     if (!isRouteFile) {
       return;
@@ -222,8 +639,6 @@ export class Router {
 
   /**
    * 获取特殊文件类型
-   * @param fileName 文件名
-   * @returns 特殊文件类型或 undefined
    */
   private getSpecialFileType(
     fileName: string,
@@ -238,17 +653,12 @@ export class Router {
 
   /**
    * 解析路由路径
-   * @param relativePath 相对路径
-   * @param fileName 文件名
-   * @param _isApi 是否为 API 路由
-   * @returns 路由信息
    */
   private parseRoutePath(
     relativePath: string,
     fileName: string,
     _isApi: boolean,
   ): { path: string; file: string; type: RouteType } {
-    // 移除文件扩展名
     const nameWithoutExt = fileName.replace(/\.(tsx|ts)$/, "");
 
     // 处理 index 文件
@@ -263,43 +673,31 @@ export class Router {
       };
     }
 
-    // 构建文件路径（用于路由匹配）
     const filePath = relativePath ? `${relativePath}/${fileName}` : fileName;
 
-    // 解析路由路径
     let routePath = relativePath ? `/${relativePath}` : "";
     routePath = `${routePath}/${nameWithoutExt}`;
 
-    // 检测路由类型
     let routeType: RouteType = "static";
 
-    // 动态路由：[id]
+    // 动态路由
     if (nameWithoutExt.startsWith("[") && nameWithoutExt.endsWith("]")) {
       const paramName = nameWithoutExt.slice(1, -1);
       if (paramName.startsWith("...")) {
-        // 通配符路由：[...slug]
         routeType = "wildcard";
-        routePath = routePath.replace(
-          `/${nameWithoutExt}`,
-          "/*",
-        );
+        routePath = routePath.replace(`/${nameWithoutExt}`, "/*");
       } else if (
         nameWithoutExt.startsWith("[[") && nameWithoutExt.endsWith("]]")
       ) {
-        // 可选参数路由：[[slug]]
         routeType = "optional";
-        const paramName = nameWithoutExt.slice(2, -2);
+        const optionalParamName = nameWithoutExt.slice(2, -2);
         routePath = routePath.replace(
           `/${nameWithoutExt}`,
-          `/:${paramName}?`,
+          `/:${optionalParamName}?`,
         );
       } else {
-        // 动态路由：[id]
         routeType = "dynamic";
-        routePath = routePath.replace(
-          `/${nameWithoutExt}`,
-          `/:${paramName}`,
-        );
+        routePath = routePath.replace(`/${nameWithoutExt}`, `/:${paramName}`);
       }
     }
 
@@ -316,58 +714,7 @@ export class Router {
   }
 
   /**
-   * 匹配路由
-   * @param pathname 路径（如 /user/123）
-   * @param options 匹配选项
-   * @returns 路由匹配结果或 null
-   */
-  async match(
-    pathname: string,
-    options?: { method?: string },
-  ): Promise<RouteMatch | null> {
-    // 解析查询参数
-    const url = new URL(pathname, "http://localhost");
-    const query: Record<string, string> = {};
-    for (const [key, value] of url.searchParams.entries()) {
-      query[key] = value;
-    }
-
-    const cleanPath = url.pathname;
-
-    // 先尝试匹配 API 路由
-    if (options?.method || cleanPath.startsWith("/api/")) {
-      const apiMatch = await this.matchApiRoute(cleanPath, options?.method);
-      if (apiMatch) {
-        return {
-          ...apiMatch,
-          query,
-        };
-      }
-    }
-
-    // 匹配普通路由
-    for (const route of this.routes) {
-      if (route.isApi) continue;
-
-      const match = this.matchRoute(route, cleanPath);
-      if (match) {
-        return {
-          route,
-          params: match.params,
-          query,
-          isApi: false,
-        };
-      }
-    }
-
-    return null;
-  }
-
-  /**
    * 匹配 API 路由
-   * @param pathname 路径
-   * @param method HTTP 方法
-   * @returns 路由匹配结果或 null
    */
   private async matchApiRoute(
     pathname: string,
@@ -378,30 +725,31 @@ export class Router {
 
       const match = this.matchRoute(route, pathname);
       if (match) {
-        // 加载 API 处理函数
         const handlers = await this.loadApiHandlers(route.fullPath);
         if (!handlers) continue;
 
-        // 如果是 RESTful 模式，检查 HTTP 方法
         if (this.options.apiMode === "restful") {
           if (method && handlers[method.toUpperCase()]) {
             return {
               route,
               params: match.params,
               query: {},
+              fullPath: pathname,
               isApi: true,
+              meta: route.meta || {},
               handlers: {
                 [method.toUpperCase()]: handlers[method.toUpperCase()],
               },
             };
           }
         } else {
-          // 操作方法模式：所有方法都返回所有处理函数
           return {
             route,
             params: match.params,
             query: {},
+            fullPath: pathname,
             isApi: true,
+            meta: route.meta || {},
             handlers,
           };
         }
@@ -413,9 +761,6 @@ export class Router {
 
   /**
    * 匹配单个路由
-   * @param route 路由对象
-   * @param pathname 路径
-   * @returns 匹配结果或 null
    */
   private matchRoute(
     route: Route,
@@ -424,16 +769,13 @@ export class Router {
     const routePath = route.path;
     const params: Record<string, string> = {};
 
-    // 静态路由
     if (route.type === "static") {
       return routePath === pathname ? { params } : null;
     }
 
-    // 动态路由匹配
     const routeParts = routePath.split("/").filter(Boolean);
     const pathParts = pathname.split("/").filter(Boolean);
 
-    // 通配符路由
     if (route.type === "wildcard") {
       const prefix = routePath.replace("/*", "");
       if (pathname.startsWith(prefix)) {
@@ -444,16 +786,13 @@ export class Router {
       return null;
     }
 
-    // 可选参数路由
     if (route.type === "optional") {
       const basePath = routePath.replace(/\/:[^?]+(\?)?$/, "");
       if (pathname === basePath) {
         return { params };
       }
-      // 继续匹配动态部分
     }
 
-    // 动态路由匹配
     if (routeParts.length !== pathParts.length) {
       return null;
     }
@@ -463,7 +802,6 @@ export class Router {
       const pathPart = pathParts[i];
 
       if (routePart.startsWith(":")) {
-        // 动态参数
         const paramName = routePart.replace(/^:/, "").replace(/\?$/, "");
         params[paramName] = pathPart;
       } else if (routePart !== pathPart) {
@@ -476,8 +814,6 @@ export class Router {
 
   /**
    * 加载 API 处理函数
-   * @param filePath 文件路径
-   * @returns 处理函数映射或 null
    */
   private async loadApiHandlers(
     filePath: string,
@@ -489,24 +825,9 @@ export class Router {
     | null
   > {
     try {
-      // 动态导入模块
-      // 注意：filePath 需要转换为 file:// URL 格式
-      let moduleUrl: string;
-      if (filePath.startsWith("file://")) {
-        moduleUrl = filePath;
-      } else if (filePath.startsWith("/") || filePath.match(/^[A-Za-z]:/)) {
-        // 绝对路径（Unix 或 Windows）
-        moduleUrl = `file://${filePath}`;
-      } else {
-        // 相对路径，需要加上当前工作目录
-        moduleUrl = `file://${cwd()}/${filePath}`;
-      }
+      const module = await this.importModule(filePath);
 
-      const module = await import(moduleUrl);
-
-      // 根据 apiMode 提取处理函数
       if (this.options.apiMode === "restful") {
-        // RESTful 模式：提取 HTTP 方法函数（GET、POST、PUT、DELETE、PATCH 等）
         const handlers: Record<
           string,
           (request: Request, context?: any) => Promise<Response> | Response
@@ -530,7 +851,6 @@ export class Router {
 
         return Object.keys(handlers).length > 0 ? handlers : null;
       } else {
-        // 操作方法模式：提取所有导出的函数（排除默认导出和特殊函数）
         const handlers: Record<
           string,
           (request: Request, context?: any) => Promise<Response> | Response
@@ -560,7 +880,6 @@ export class Router {
         return Object.keys(handlers).length > 0 ? handlers : null;
       }
     } catch (error) {
-      // 模块加载失败时返回 null
       console.warn(
         `加载 API 处理函数失败: ${filePath}, ${
           error instanceof Error ? error.message : String(error)
@@ -571,24 +890,25 @@ export class Router {
   }
 
   /**
-   * 获取所有路由
-   * @returns 路由列表
+   * 导入模块
    */
-  getRoutes(): Route[] {
-    return [...this.routes];
-  }
+  private async importModule(filePath: string): Promise<any> {
+    let moduleUrl: string;
+    if (filePath.startsWith("file://")) {
+      moduleUrl = filePath;
+    } else if (filePath.startsWith("/") || filePath.match(/^[A-Za-z]:/)) {
+      moduleUrl = `file://${filePath}`;
+    } else {
+      moduleUrl = `file://${cwd()}/${filePath}`;
+    }
 
-  /**
-   * 获取特殊文件路径
-   * @param type 特殊文件类型
-   * @returns 文件路径或 undefined
-   */
-  getSpecialFile(
-    type: "_app" | "_layout" | "_404" | "_error" | "_middleware",
-  ): string | undefined {
-    return this.specialFiles.get(type);
+    return await import(moduleUrl);
   }
 }
+
+// ============================================================================
+// 工厂函数
+// ============================================================================
 
 /**
  * 创建路由器实例
@@ -598,3 +918,80 @@ export class Router {
 export function createRouter(options: RouterOptions): Router {
   return new Router(options);
 }
+
+// ============================================================================
+// 辅助函数
+// ============================================================================
+
+/**
+ * 创建重定向响应
+ * @param destination 目标路径
+ * @param statusCode 状态码
+ * @returns 响应对象
+ */
+export function createRedirectResponse(
+  destination: string,
+  statusCode: 301 | 302 | 303 | 307 | 308 = 302,
+): Response {
+  return new Response(null, {
+    status: statusCode,
+    headers: {
+      Location: destination,
+    },
+  });
+}
+
+/**
+ * 创建 JSON 响应
+ * @param data 数据
+ * @param status 状态码
+ * @returns 响应对象
+ */
+export function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+/**
+ * 创建 HTML 响应
+ * @param html HTML 内容
+ * @param status 状态码
+ * @returns 响应对象
+ */
+export function html(htmlContent: string, status = 200): Response {
+  return new Response(htmlContent, {
+    status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+}
+
+/**
+ * 创建 404 响应
+ * @param message 错误消息
+ * @returns 响应对象
+ */
+export function notFound(message = "Not Found"): Response {
+  return new Response(message, {
+    status: 404,
+    headers: {
+      "Content-Type": "text/plain",
+    },
+  });
+}
+
+// ============================================================================
+// 导出类型
+// ============================================================================
+
+export type {
+  RouteMeta as ServerRouteMeta,
+  RedirectConfig as ServerRedirectConfig,
+  MiddlewareContext as ServerMiddlewareContext,
+  MiddlewareFunction as ServerMiddlewareFunction,
+};

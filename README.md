@@ -4,15 +4,15 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
-[![Tests](https://img.shields.io/badge/tests-91%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-158%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
 ## 🎯 功能
 
 文件路由系统，提供统一的文件路由抽象层：
-- **服务端**：路由文件扫描、SSR 路由匹配、API 路由处理
-- **客户端**：浏览器路由导航、路由守卫、历史操作
+- **服务端**：路由文件扫描、SSR 路由匹配、API 路由处理、中间件链、重定向
+- **客户端**：浏览器路由导航、路由守卫、历史操作、滚动行为、预取、Link 组件
 
 ---
 
@@ -45,7 +45,7 @@ import { createRouter } from "jsr:@dreamer/router/client";
 |------|------|------|
 | Deno | ✅ | 2.6+ |
 | Bun | ✅ | 1.3.5+ |
-| 服务端 | ✅ | SSR 路由匹配、API 路由 |
+| 服务端 | ✅ | SSR 路由匹配、API 路由、中间件 |
 | 浏览器 | ✅ | 客户端路由导航（/client） |
 
 ---
@@ -74,45 +74,53 @@ import { createRouter } from "jsr:@dreamer/router/client";
   - `_404.tsx`：404 页面（可选）
   - `_error.tsx`：错误页面（可选）
   - `_middleware.ts`：路由中间件（可选）
+- **重定向配置**：路由级别的重定向规则
+- **中间件链**：多个中间件链式执行
+- **路由元数据**：为路由添加自定义元数据
 
 ### 客户端路由（@dreamer/router/client）
 
 - **路由导航**：
   - `navigate()` 编程式导航（异步，返回 Promise）
+  - `replace()` 替换当前历史记录
   - `back()`/`forward()`/`go()` 历史操作
-  - 支持替换历史记录（replace 模式）
+  - `start()` 启动链接拦截
 - **路由守卫**：
-  - `beforeRoute` 前置守卫（可阻止导航）
+  - `beforeRoute` 前置守卫（可阻止导航或重定向）
   - `afterRoute` 后置守卫
   - 动态添加/移除守卫
 - **路由匹配**：
   - 静态/动态/通配符路由匹配
   - 查询参数解析
   - 路由参数提取
+- **滚动行为管理**：
+  - 自定义滚动行为函数
+  - 保存/恢复滚动位置
+- **预取功能**：
+  - `prefetch()` 提前加载目标路由组件
+  - 组件缓存
+- **Link/NavLink 组件**：
+  - 声明式导航
+  - 活跃状态样式
+  - 预取支持
+- **路由模式**：
+  - History 模式（默认）
+  - Hash 模式（`#/path`）
+- **基础路径**：支持部署在子路径下
+- **路由元数据**：自动更新页面标题等
+- **导航状态**：加载状态监听（idle/loading/error）
 - **多引擎支持**：
   - Preact（默认）
   - React
   - Vue3
-- **动态路由管理**：
-  - `addRoute()` 动态添加路由
-  - `removeRoute()` 动态移除路由
-  - `setComponentLoader()` 自定义组件加载器
-
----
-
-## 🎯 使用场景
-
-### 服务端
-
-- **SSR 路由匹配**：服务端路由匹配和渲染
-- **API 路由**：处理 API 请求
-- **路由文件扫描**：扫描和注册路由文件
-
-### 客户端
-
-- **SPA 路由导航**：单页应用路由切换
-- **路由守卫**：权限控制、登录检查
-- **历史操作**：前进、后退、跳转
+- **Hooks**：
+  - `useRouter()` 获取路由器实例
+  - `useRoute()` 获取当前路由
+  - `useParams()` 获取路由参数
+  - `useQuery()` 获取查询参数
+  - `useMeta()` 获取路由元数据
+  - `useNavigationState()` 获取导航状态
+  - `useIsActive()` 检查路径是否活跃
 
 ---
 
@@ -121,7 +129,7 @@ import { createRouter } from "jsr:@dreamer/router/client";
 ### 服务端路由
 
 ```typescript
-import { createRouter } from "jsr:@dreamer/router";
+import { createRouter, json, notFound } from "jsr:@dreamer/router";
 
 // 创建文件路由
 const router = createRouter({
@@ -129,35 +137,68 @@ const router = createRouter({
   framework: "preact",
   ssr: true,
   apiMode: "restful",
+  // 重定向配置
+  redirects: [
+    { source: "/old-page", destination: "/new-page", permanent: true },
+    { source: "/blog/:slug", destination: "/posts/:slug" },
+  ],
+});
+
+// 添加全局中间件
+router.use(async (context, next) => {
+  console.log(`请求: ${context.request.url}`);
+  const response = await next();
+  console.log(`响应: ${response.status}`);
+  return response;
 });
 
 // 扫描路由文件
 await router.scan();
 
-// 获取路由列表
-const routes = router.getRoutes();
+// 处理请求（带中间件链）
+const response = await router.handleRequest(request, async (match, context) => {
+  if (!match) {
+    return notFound();
+  }
 
-// 服务端路由匹配
-const match = router.match("/user/123");
-if (match) {
+  // 处理重定向
+  if (match.redirect) {
+    return Response.redirect(match.redirect.destination, match.redirect.statusCode);
+  }
+
+  // 加载并渲染页面
   const Component = await match.load();
   const html = renderToString(<Component params={match.params} />);
-}
+  return new Response(html, { headers: { "Content-Type": "text/html" } });
+});
 ```
 
 ### 客户端路由
 
 ```typescript
-import { createRouter } from "jsr:@dreamer/router/client";
+import {
+  createRouter,
+  useRouter,
+  useRoute,
+  useParams,
+  createLinkComponent,
+} from "jsr:@dreamer/router/client";
 
 // 创建客户端路由器
 const router = createRouter({
   routes: [
-    { path: "/", component: "index", type: "static" },
-    { path: "/about", component: "about", type: "static" },
+    { path: "/", component: "index", meta: { title: "首页" } },
+    { path: "/about", component: "about", meta: { title: "关于" } },
     { path: "/user/:id", component: "user/[id]", type: "dynamic" },
   ],
-  engine: "preact", // 或 "react"、"vue3"
+  engine: "preact",
+  basePath: "/app", // 可选：部署在子路径
+  mode: "history", // 或 "hash"
+  // 滚动行为
+  scrollBehavior: (to, from, savedPosition) => {
+    if (savedPosition) return savedPosition;
+    return { top: 0, behavior: "smooth" };
+  },
 });
 
 // 设置组件加载器
@@ -165,114 +206,302 @@ router.setComponentLoader(async (component) => {
   return await import(`./routes/${component}.tsx`);
 });
 
-// 路由守卫
+// 启动路由器（开始拦截链接点击）
+router.start();
+
+// 路由守卫 - 支持重定向
 router.beforeRoute((to, from) => {
   if (to.route.path === "/admin" && !isAuthenticated()) {
-    return false; // 阻止导航
+    return "/login"; // 返回字符串表示重定向
   }
   return true;
 });
 
-// 导航（异步方法）
+// 导航状态监听
+router.onNavigationState((state, error) => {
+  if (state === "loading") {
+    showLoadingIndicator();
+  } else {
+    hideLoadingIndicator();
+  }
+});
+
+// 导航
 await router.navigate("/about");
+await router.replace("/home"); // 替换历史记录
+
+// 预取
+await router.prefetch("/user/123");
 
 // 历史操作
 router.back();
 router.forward();
 router.go(-2);
+```
 
-// 监听路由变化
-const unsubscribe = router.onRouteChange((match) => {
-  console.log("当前路由:", match?.route.path);
+### Link 组件使用
+
+```typescript
+import { h } from "preact";
+import { createLinkComponent, createNavLinkComponent } from "jsr:@dreamer/router/client";
+
+// 创建 Link 组件
+const Link = createLinkComponent(h);
+const NavLink = createNavLinkComponent(h);
+
+function Navigation() {
+  return (
+    <nav>
+      {/* 基本链接 */}
+      <Link to="/about">关于</Link>
+
+      {/* 带预取的链接 */}
+      <Link to="/contact" prefetch>联系我们</Link>
+
+      {/* 替换历史记录 */}
+      <Link to="/home" replace>首页</Link>
+
+      {/* 导航链接（自动添加活跃状态） */}
+      <NavLink to="/products" activeClass="nav-active" exact>
+        产品
+      </NavLink>
+
+      {/* 带活跃样式的导航链接 */}
+      <NavLink
+        to="/blog"
+        activeClass="active"
+        activeStyle={{ fontWeight: "bold", color: "blue" }}
+      >
+        博客
+      </NavLink>
+    </nav>
+  );
+}
+```
+
+### Vue 2/3 使用
+
+Vue 有专门的适配模块 `@dreamer/router/client/vue`，支持：
+- **Vue 3.x**（原生支持）
+- **Vue 2.7+**（原生支持组合式 API）
+
+> 注意：不支持 Vue 2.6 及以下版本
+
+#### Vue 3 示例
+
+```typescript
+import {
+  createVueComposables,
+  createVueLinkComponent,
+  createVueNavLinkComponent,
+  createVueRouterPlugin,
+} from "@dreamer/router/client/vue";
+import { createRouter } from "@dreamer/router/client";
+import {
+  h, ref, computed, onMounted, onUnmounted, watch,
+  defineComponent, createApp,
+} from "vue";
+
+// 创建路由器
+const router = createRouter({
+  routes: [
+    { path: "/", component: "index" },
+    { path: "/about", component: "about" },
+  ],
+  engine: "vue3",
 });
+router.start();
+
+// 创建组合式函数
+const { useRouter, useRoute, useParams } = createVueComposables({
+  ref, computed, onMounted, onUnmounted, watch,
+});
+
+// 创建组件
+const Link = createVueLinkComponent(h);
+const NavLink = createVueNavLinkComponent(h, { computed });
+
+// 在组件中使用
+const UserPage = defineComponent({
+  components: { Link, NavLink },
+  setup() {
+    const router = useRouter();
+    const route = useRoute();
+    const params = useParams();
+
+    const goToAbout = () => router.navigate("/about");
+
+    return { route, params, goToAbout };
+  },
+  template: `
+    <div>
+      <h1>用户页面</h1>
+      <p>用户 ID: {{ params.value.id }}</p>
+      <nav>
+        <Link to="/">首页</Link>
+        <NavLink to="/about" activeClass="active">关于</NavLink>
+      </nav>
+      <button @click="goToAbout">前往关于页</button>
+    </div>
+  `,
+});
+
+// 使用插件方式全局注册
+const app = createApp(App);
+const routerPlugin = createVueRouterPlugin({
+  h, ref, computed, onMounted, onUnmounted, watch,
+});
+app.use(routerPlugin, { router });
+app.mount("#app");
+```
+
+#### Vue 2.7+ 示例
+
+```typescript
+// Vue 2.7+ 原生支持组合式 API，用法与 Vue 3 相同
+import Vue from "vue";
+import {
+  h, ref, computed, onMounted, onUnmounted, watch,
+} from "vue";
+import {
+  createVueComposables,
+  createVueLinkComponent,
+  createVueRouterPlugin,
+} from "@dreamer/router/client/vue";
+import { createRouter } from "@dreamer/router/client";
+
+// 创建路由器
+const router = createRouter({
+  routes: [...],
+  engine: "vue3",
+});
+router.start();
+
+// 创建组合式函数和组件（与 Vue 3 相同的 API）
+const { useRouter, useRoute } = createVueComposables({
+  ref, computed, onMounted, onUnmounted, watch,
+});
+const Link = createVueLinkComponent(h);
+
+// 安装路由插件
+const routerPlugin = createVueRouterPlugin({
+  h, ref, computed, onMounted, onUnmounted, watch,
+});
+Vue.use(routerPlugin, { router });
+
+new Vue({ render: h => h(App) }).$mount("#app");
+```
+
+### Hooks 使用
+
+```typescript
+import { useRouter, useRoute, useParams, useQuery, useMeta } from "jsr:@dreamer/router/client";
+
+function UserPage() {
+  const router = useRouter();
+  const route = useRoute();
+  const params = useParams();
+  const query = useQuery();
+  const meta = useMeta();
+
+  // 获取路由参数
+  const userId = params.id;
+
+  // 获取查询参数
+  const tab = query.tab || "profile";
+
+  // 获取元数据
+  const pageTitle = meta.title;
+
+  return (
+    <div>
+      <h1>{pageTitle}</h1>
+      <p>用户 ID: {userId}</p>
+      <p>当前标签: {tab}</p>
+      <button onClick={() => router.navigate("/users")}>
+        返回用户列表
+      </button>
+    </div>
+  );
+}
 ```
 
 ---
 
-## 🎨 使用示例
+## 🎨 高级用法
 
-### API 路由示例
-
-#### RESTful 形式
+### 服务端中间件
 
 ```typescript
-// src/routes/api/user.ts
-export async function GET(request: Request) {
-  const users = await getUsers();
-  return Response.json(users);
-}
+// 认证中间件
+const authMiddleware: MiddlewareFunction = async (context, next) => {
+  const token = context.request.headers.get("Authorization");
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const user = await createUser(body);
-  return Response.json(user, { status: 201 });
-}
-```
-
-#### 操作方法形式
-
-```typescript
-// src/routes/api/user.ts
-export async function login(request: Request) {
-  const { username, password } = await request.json();
-  const user = await authenticateUser(username, password);
-  return Response.json(user);
-}
-
-export async function register(request: Request) {
-  const body = await request.json();
-  const user = await createUser(body);
-  return Response.json(user, { status: 201 });
-}
-```
-
-### 客户端路由守卫
-
-```typescript
-import { createRouter } from "jsr:@dreamer/router/client";
-
-const router = createRouter({ routes: [...] });
-
-// 前置守卫 - 权限检查
-const removeGuard = router.beforeRoute((to, from) => {
-  if (to.route.path.startsWith("/admin")) {
-    if (!isAuthenticated()) {
-      router.navigate("/login");
-      return false;
-    }
+  if (!token && context.route?.meta?.requiresAuth) {
+    return new Response("Unauthorized", { status: 401 });
   }
-  return true;
-});
 
-// 后置守卫 - 页面统计
-router.afterRoute((to, from) => {
-  analytics.trackPageView(to.route.path);
-});
+  // 将用户信息存入 context.data
+  context.data.user = await validateToken(token);
 
-// 移除守卫
-removeGuard();
+  return next();
+};
+
+// 日志中间件
+const logMiddleware: MiddlewareFunction = async (context, next) => {
+  const start = Date.now();
+  const response = await next();
+  const duration = Date.now() - start;
+  console.log(`${context.request.method} ${context.request.url} - ${duration}ms`);
+  return response;
+};
+
+router.use(logMiddleware);
+router.use(authMiddleware);
 ```
 
-### 动态路由管理
+### 路由级别中间件
+
+在路由目录下创建 `_middleware.ts` 文件：
 
 ```typescript
-const router = createRouter({ routes: [] });
+// src/routes/admin/_middleware.ts
+import type { MiddlewareContext } from "@dreamer/router";
 
-// 动态添加路由
-router.addRoute({
-  path: "/dynamic",
-  component: "dynamic",
-  type: "static",
+export default async function middleware(
+  context: MiddlewareContext,
+  next: () => Promise<Response>,
+) {
+  // 只对 /admin/* 路由生效
+  if (!context.data.user?.isAdmin) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  return next();
+}
+```
+
+### Hash 模式
+
+```typescript
+const router = createRouter({
+  routes: [...],
+  mode: "hash", // 使用 hash 模式
 });
 
-// 动态移除路由
-router.removeRoute("/dynamic");
+// URL 格式：http://example.com/#/about
+await router.navigate("/about");
+```
 
-// 获取当前引擎
-const engine = router.getEngine(); // "preact" | "react" | "vue3"
+### 基础路径
 
-// 销毁路由器
-router.destroy();
+```typescript
+const router = createRouter({
+  routes: [...],
+  basePath: "/app", // 部署在 /app 子路径下
+});
+
+// 实际 URL：http://example.com/app/about
+await router.navigate("/about");
 ```
 
 ---
@@ -290,16 +519,34 @@ router.destroy();
 | routesDir | string | - | 路由文件目录 |
 | framework | "preact" \| "react" | "preact" | 前端框架 |
 | ssr | boolean | true | 是否启用 SSR |
-| apiMode | "restful" \| "action" | - | API 路由形式 |
+| apiMode | "restful" \| "action" | "restful" | API 路由形式 |
+| redirects | RedirectConfig[] | [] | 重定向配置 |
+| middlewares | MiddlewareFunction[] | [] | 全局中间件 |
+| skipAppValidation | boolean | false | 跳过 _app.tsx 验证 |
 
 #### Router 方法
 
 | 方法 | 返回值 | 说明 |
 |------|--------|------|
 | scan() | Promise\<void\> | 扫描路由文件 |
-| match(pathname) | RouteMatch \| null | 匹配路由 |
+| match(pathname, options?) | Promise\<RouteMatch \| null\> | 匹配路由 |
+| handleRequest(request, handler) | Promise\<Response\> | 处理请求（带中间件） |
+| use(middleware) | void | 添加全局中间件 |
+| addRedirect(config) | void | 添加重定向配置 |
 | getRoutes() | Route[] | 获取所有路由 |
+| getClientRoutes() | ClientRoute[] | 获取客户端路由配置 |
 | getSpecialFile(name) | string \| undefined | 获取特殊文件路径 |
+| loadModule(path) | Promise\<any\> | 加载模块 |
+| clearCache(path?) | void | 清除模块缓存 |
+
+#### 辅助函数
+
+| 函数 | 说明 |
+|------|------|
+| json(data, status?) | 创建 JSON 响应 |
+| html(content, status?) | 创建 HTML 响应 |
+| notFound(message?) | 创建 404 响应 |
+| createRedirectResponse(destination, statusCode?) | 创建重定向响应 |
 
 ### 客户端 API（@dreamer/router/client）
 
@@ -311,48 +558,91 @@ router.destroy();
 |------|------|--------|------|
 | routes | ClientRoute[] | - | 路由配置列表 |
 | engine | "preact" \| "react" \| "vue3" | "preact" | 渲染引擎 |
+| basePath | string | "" | 基础路径 |
+| mode | "history" \| "hash" | "history" | 路由模式 |
+| scrollBehavior | ScrollBehaviorHandler | - | 滚动行为函数 |
 
 #### ClientRouter 方法
 
 | 方法 | 返回值 | 说明 |
 |------|--------|------|
-| navigate(path, replace?) | Promise\<void\> | 导航到指定路径 |
+| start() | void | 启动路由器，开始拦截链接 |
+| navigate(path, options?) | Promise\<void\> | 导航到指定路径 |
+| replace(path, state?) | Promise\<void\> | 替换当前历史记录并导航 |
 | back() | void | 后退一步 |
 | forward() | void | 前进一步 |
 | go(delta) | void | 前进/后退指定步数 |
 | match(pathname) | ClientRouteMatch \| null | 匹配路由 |
 | getCurrentRoute() | ClientRouteMatch \| null | 获取当前路由 |
-| getRoutes() | ClientRoute[] | 获取所有路由 |
-| getEngine() | "preact" \| "react" \| "vue3" | 获取渲染引擎 |
+| prefetch(path) | Promise\<unknown \| null\> | 预取路由组件 |
+| isActive(path, exact?) | boolean | 检查路径是否匹配当前路由 |
+| resolvePath(path) | string | 解析路径（添加基础路径） |
 | onRouteChange(callback) | () => void | 监听路由变化 |
+| onNavigationState(callback) | () => void | 监听导航状态变化 |
 | beforeRoute(guard) | () => void | 添加前置守卫 |
-| afterRoute(guard) | void | 添加后置守卫 |
-| removeBeforeRoute(guard) | boolean | 移除前置守卫 |
-| removeAfterRoute(guard) | boolean | 移除后置守卫 |
+| afterRoute(guard) | () => void | 添加后置守卫 |
+| getRoutes() | ClientRoute[] | 获取所有路由 |
+| getEngine() | string | 获取渲染引擎 |
+| getMode() | RouterMode | 获取路由模式 |
+| getBasePath() | string | 获取基础路径 |
+| getNavigationState() | NavigationState | 获取导航状态 |
 | addRoute(route) | void | 动态添加路由 |
 | removeRoute(path) | boolean | 动态移除路由 |
 | setComponentLoader(loader) | void | 设置组件加载器 |
+| clearCache(component?) | void | 清除组件缓存 |
 | destroy() | void | 销毁路由器 |
 
-#### ClientRoute 类型
+#### Hooks
+
+| Hook | 返回值 | 说明 |
+|------|--------|------|
+| useRouter() | ClientRouter | 获取路由器实例 |
+| useRoute() | ClientRouteMatch \| null | 获取当前路由 |
+| useParams() | Record\<string, string\> | 获取路由参数 |
+| useQuery() | Record\<string, string\> | 获取查询参数 |
+| useMeta() | RouteMeta | 获取路由元数据 |
+| useNavigationState() | NavigationState | 获取导航状态 |
+| useIsActive(path, exact?) | boolean | 检查路径是否活跃 |
+
+#### 组件工厂函数
+
+| 函数 | 说明 |
+|------|------|
+| createLinkComponent(h) | 创建 Link 组件 |
+| createNavLinkComponent(h) | 创建 NavLink 组件 |
+| createLinkProps(props) | 创建 Link 属性对象 |
+| createNavLinkProps(props) | 创建 NavLink 属性对象 |
+
+#### 类型定义
 
 ```typescript
 interface ClientRoute {
   path: string;           // 路由路径
   component: string;      // 组件标识
-  type: "static" | "dynamic" | "wildcard" | "optional";
+  type?: "static" | "dynamic" | "wildcard" | "optional";
+  meta?: RouteMeta;       // 路由元数据
+  redirect?: string;      // 重定向目标
 }
-```
 
-#### ClientRouteMatch 类型
+interface RouteMeta {
+  title?: string;         // 页面标题
+  requiresAuth?: boolean; // 是否需要认证
+  keepAlive?: boolean;    // 是否缓存组件
+  [key: string]: unknown; // 自定义数据
+}
 
-```typescript
 interface ClientRouteMatch {
-  route: ClientRoute;              // 匹配的路由
-  params: Record<string, string>;  // 路由参数
-  query: Record<string, string>;   // 查询参数
-  load: () => Promise<unknown>;    // 组件加载函数
+  route: ClientRoute;
+  params: Record<string, string>;
+  query: Record<string, string>;
+  fullPath: string;
+  hash: string;
+  meta: RouteMeta;
+  load?: () => Promise<unknown>;
 }
+
+type NavigationState = "idle" | "loading" | "error";
+type RouterMode = "history" | "hash";
 ```
 
 ---
@@ -361,13 +651,30 @@ interface ClientRouteMatch {
 
 | 指标 | 数值 |
 |------|------|
-| 总测试数 | 91 |
-| 通过 | 91 |
+| 总测试数 | 158 |
+| 通过 | 158 |
 | 失败 | 0 |
 | 通过率 | 100% |
 | 测试时间 | 2026-02-02 |
+| 执行时间 | ~31s |
 
-详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)
+### 运行时兼容性
+
+| 运行时 | 测试数 | 通过 | 状态 |
+|--------|--------|------|------|
+| Deno | 158 | 158 | ✅ |
+| Bun | 158 | 158 | ✅ |
+
+### 测试文件覆盖
+
+| 测试文件 | 测试数量 | 覆盖内容 |
+|----------|----------|----------|
+| client-browser.test.ts | 27 | 浏览器测试：导航、守卫、链接拦截、历史操作 |
+| client.test.ts | 71 | 客户端单元测试：路由匹配、元数据、basePath、hash 模式 |
+| mod.test.ts | 34 | 服务端测试：扫描、匹配、重定向、中间件 |
+| vue.test.ts | 26 | Vue 适配：Composables、Link/NavLink、插件 |
+
+详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
 ---
 
@@ -399,6 +706,24 @@ API 路由必须通过配置选择使用哪种形式，**不能混合使用**：
 // 等待导航完成（包括守卫执行）
 await router.navigate("/about");
 ```
+
+### 必须调用 start() 方法
+
+客户端路由器需要调用 `start()` 方法来启动链接拦截：
+
+```typescript
+const router = createRouter({ routes });
+router.start(); // 开始拦截 <a> 标签点击
+```
+
+### 不拦截的链接
+
+以下链接不会被客户端路由器拦截：
+- 带 `target="_blank"` 属性
+- 带 `download` 属性
+- 带 `data-native` 属性
+- 外部链接（不同源）
+- 按住 Ctrl/Cmd/Shift/Alt 键点击
 
 ---
 

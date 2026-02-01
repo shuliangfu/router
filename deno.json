@@ -1,15 +1,21 @@
 {
   "name": "@dreamer/router",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
-    "./client": "./src/client/mod.ts"
+    "./client": "./src/client/mod.ts",
+    "./client/vue": "./src/client/vue.ts"
   },
+  "exclude": [
+    "tests/data/**"
+  ],
   "publish": {
     "include": [
       "src/mod.ts",
       "src/client/mod.ts",
+      "src/client/components.ts",
+      "src/client/vue.ts",
       "LICENSE.md",
       "README.md"
     ],
@@ -35,7 +41,8 @@
   },
   "imports": {
     "@dreamer/test": "jsr:@dreamer/test@^1.0.0-beta.40",
-    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.0-beta.22"
+    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.0-beta.22",
+    "esbuild": "npm:esbuild@^0.24.0"
   },
   "nodeModulesDir": "auto"
 }

@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { createRouter, Router } from "../src/mod.ts";
 
 describe("Router", () => {
-  const testRoutesDir = join(cwd(), "tests", "output", "test-routes");
+  const testRoutesDir = join(cwd(), "tests", "data", "test-routes");
 
   // 辅助函数：清理测试目录
   async function cleanupTestRoutes() {
@@ -364,5 +364,189 @@ describe("createRouter", () => {
   it("应该创建路由器实例", () => {
     const router = createRouter({ routesDir: "./test-routes" });
     expect(router).toBeTruthy();
+  });
+});
+
+describe("Router - 新功能测试", () => {
+  const testRoutesDir = join(cwd(), "tests", "data", "test-routes-new");
+
+  async function cleanupTestRoutes() {
+    try {
+      await remove(testRoutesDir, { recursive: true });
+    } catch {
+      // 忽略
+    }
+  }
+
+  async function setupTestRoutes() {
+    await cleanupTestRoutes();
+    await mkdir(testRoutesDir, { recursive: true });
+    await writeTextFile(
+      join(testRoutesDir, "_app.tsx"),
+      "export default ({ children }: { children: any }) => children;",
+    );
+    await writeTextFile(
+      join(testRoutesDir, "index.tsx"),
+      "export default () => <div>Home</div>;",
+    );
+  }
+
+  describe("重定向配置", () => {
+    it("应该支持重定向配置", async () => {
+      await setupTestRoutes();
+      const router = createRouter({
+        routesDir: testRoutesDir,
+        redirects: [
+          { source: "/old", destination: "/new", permanent: true },
+          { source: "/temp", destination: "/", permanent: false },
+        ],
+      });
+      await router.scan();
+
+      const match = await router.match("/old");
+      expect(match).not.toBeNull();
+      expect(match?.redirect).toBeDefined();
+      expect(match?.redirect?.destination).toBe("/new");
+      expect(match?.redirect?.statusCode).toBe(301);
+    });
+
+    it("应该支持动态重定向", async () => {
+      await setupTestRoutes();
+      const router = createRouter({
+        routesDir: testRoutesDir,
+        redirects: [
+          { source: "/user/:id/old", destination: "/user/:id/new" },
+        ],
+      });
+      await router.scan();
+
+      const match = await router.match("/user/123/old");
+      expect(match?.redirect?.destination).toBe("/user/123/new");
+    });
+
+    it("应该支持 addRedirect 方法", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+      await router.scan();
+
+      router.addRedirect({ source: "/dynamic", destination: "/" });
+      const match = await router.match("/dynamic");
+      expect(match?.redirect).toBeDefined();
+    });
+  });
+
+  describe("中间件", () => {
+    it("应该支持 use 方法添加中间件", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+
+      let middlewareCalled = false;
+      router.use(async (_ctx, next) => {
+        middlewareCalled = true;
+        return await next();
+      });
+
+      await router.scan();
+      expect(router).toBeDefined();
+    });
+  });
+
+  describe("getClientRoutes", () => {
+    it("应该返回客户端路由配置", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const clientRoutes = router.getClientRoutes();
+      expect(Array.isArray(clientRoutes)).toBe(true);
+      expect(clientRoutes.length).toBeGreaterThan(0);
+
+      const indexRoute = clientRoutes.find((r) => r.path === "/");
+      expect(indexRoute).toBeDefined();
+      expect(indexRoute?.component).toBeDefined();
+    });
+  });
+
+  describe("skipAppValidation", () => {
+    it("应该支持跳过 _app.tsx 验证", async () => {
+      await cleanupTestRoutes();
+      await mkdir(testRoutesDir, { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "index.tsx"),
+        "export default () => <div>Home</div>;",
+      );
+
+      // 没有 _app.tsx 但跳过验证
+      const router = createRouter({
+        routesDir: testRoutesDir,
+        skipAppValidation: true,
+      });
+      await router.scan();
+      expect(router.getRoutes().length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("getFramework 和 getApiMode", () => {
+    it("应该返回框架类型", () => {
+      const router = createRouter({ routesDir: testRoutesDir });
+      expect(router.getFramework()).toBe("preact");
+    });
+
+    it("应该返回 API 模式", () => {
+      const router = createRouter({ routesDir: testRoutesDir });
+      expect(router.getApiMode()).toBe("restful");
+    });
+
+    it("应该返回 SSR 状态", () => {
+      const router = createRouter({ routesDir: testRoutesDir });
+      expect(router.isSSREnabled()).toBe(true);
+    });
+  });
+
+  describe("模块缓存", () => {
+    it("应该支持清除缓存", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+      await router.scan();
+
+      // 清除缓存不应该报错
+      router.clearCache();
+      router.clearCache("/some/path");
+      expect(router).toBeDefined();
+    });
+  });
+
+  describe("RouteMatch.load", () => {
+    it("匹配结果应该包含 load 方法", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const match = await router.match("/");
+      expect(match).not.toBeNull();
+      expect(typeof match?.load).toBe("function");
+    });
+  });
+
+  describe("RouteMatch.fullPath", () => {
+    it("匹配结果应该包含 fullPath", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const match = await router.match("/?foo=bar");
+      expect(match?.fullPath).toBe("/?foo=bar");
+    });
+  });
+
+  describe("RouteMatch.meta", () => {
+    it("匹配结果应该包含 meta", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const match = await router.match("/");
+      expect(match?.meta).toBeDefined();
+    });
   });
 });

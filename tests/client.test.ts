@@ -462,6 +462,35 @@ describe("ClientRouter - 守卫管理", () => {
   });
 });
 
+describe("ClientRouter - start 启动方法", () => {
+  it("应该能调用 start 方法", () => {
+    const router = createRouter({ routes: testRoutes });
+    // start 方法应该存在且可调用（在非浏览器环境中不会报错）
+    expect(typeof router.start).toBe("function");
+    router.start();
+    // 在非浏览器环境中，start 不会报错，只是不会设置监听器
+    expect(router).toBeDefined();
+  });
+
+  it("start 方法应该是幂等的（多次调用不重复设置）", () => {
+    const router = createRouter({ routes: testRoutes });
+    // 多次调用 start 不应该报错
+    router.start();
+    router.start();
+    router.start();
+    expect(router).toBeDefined();
+  });
+
+  it("销毁后应该能重新启动", () => {
+    const router = createRouter({ routes: testRoutes });
+    router.start();
+    router.destroy();
+    // 销毁后应该能重新启动
+    router.start();
+    expect(router).toBeDefined();
+  });
+});
+
 describe("ClientRouter - 销毁", () => {
   it("应该销毁路由器", () => {
     const router = createRouter({ routes: testRoutes });
@@ -549,5 +578,155 @@ describe("ClientRouter - 边界情况", () => {
     const match = router.match("/user/hello%20world");
     expect(match).not.toBeNull();
     expect(match?.params.id).toBe("hello%20world");
+  });
+});
+
+describe("ClientRouter - 新功能测试", () => {
+  describe("路由元数据 (meta)", () => {
+    it("应该支持路由元数据", () => {
+      const routes: ClientRoute[] = [
+        {
+          path: "/",
+          component: "index",
+          type: "static",
+          meta: { title: "首页", requiresAuth: false },
+        },
+        {
+          path: "/admin",
+          component: "admin",
+          type: "static",
+          meta: { title: "管理后台", requiresAuth: true },
+        },
+      ];
+      const router = createRouter({ routes });
+
+      const homeMatch = router.match("/");
+      expect(homeMatch?.meta.title).toBe("首页");
+      expect(homeMatch?.meta.requiresAuth).toBe(false);
+
+      const adminMatch = router.match("/admin");
+      expect(adminMatch?.meta.title).toBe("管理后台");
+      expect(adminMatch?.meta.requiresAuth).toBe(true);
+    });
+
+    it("应该返回空对象当没有元数据时", () => {
+      const routes: ClientRoute[] = [
+        { path: "/", component: "index", type: "static" },
+      ];
+      const router = createRouter({ routes });
+      const match = router.match("/");
+      expect(match?.meta).toEqual({});
+    });
+  });
+
+  describe("基础路径 (basePath)", () => {
+    it("应该支持基础路径配置", () => {
+      const routes: ClientRoute[] = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = createRouter({ routes, basePath: "/app" });
+      expect(router.getBasePath()).toBe("/app");
+    });
+
+    it("应该正确解析路径", () => {
+      const routes: ClientRoute[] = [
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = createRouter({ routes, basePath: "/app" });
+      const resolved = router.resolvePath("/about");
+      expect(resolved).toBe("/app/about");
+    });
+
+    it("应该不重复添加基础路径", () => {
+      const routes: ClientRoute[] = [
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = createRouter({ routes, basePath: "/app" });
+      const resolved = router.resolvePath("/app/about");
+      expect(resolved).toBe("/app/about");
+    });
+  });
+
+  describe("路由模式 (mode)", () => {
+    it("应该默认使用 history 模式", () => {
+      const router = createRouter({ routes: testRoutes });
+      expect(router.getMode()).toBe("history");
+    });
+
+    it("应该支持 hash 模式", () => {
+      const router = createRouter({ routes: testRoutes, mode: "hash" });
+      expect(router.getMode()).toBe("hash");
+    });
+  });
+
+  describe("导航状态 (navigation state)", () => {
+    it("应该返回初始空闲状态", () => {
+      const router = createRouter({ routes: testRoutes });
+      expect(router.getNavigationState()).toBe("idle");
+    });
+
+    it("应该支持导航状态监听", () => {
+      const router = createRouter({ routes: testRoutes });
+      let currentState = "";
+
+      router.onNavigationState((state) => {
+        currentState = state;
+      });
+
+      expect(currentState).toBe("idle");
+    });
+  });
+
+  describe("isActive 方法", () => {
+    it("应该正确判断路径是否活跃", () => {
+      const routes: ClientRoute[] = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = createRouter({ routes });
+
+      // 在非浏览器环境中，getCurrentRoute 返回 "/" 的匹配
+      const isRootActive = router.isActive("/", true);
+      expect(isRootActive).toBe(true);
+    });
+  });
+
+  describe("路由重定向", () => {
+    it("应该支持路由级别重定向", () => {
+      const routes: ClientRoute[] = [
+        { path: "/old", component: "old", type: "static", redirect: "/new" },
+        { path: "/new", component: "new", type: "static" },
+      ];
+      const router = createRouter({ routes });
+
+      const match = router.match("/old");
+      // 重定向应该返回新路由的匹配
+      expect(match?.route.path).toBe("/new");
+    });
+  });
+
+  describe("组件缓存", () => {
+    it("应该支持清除缓存", () => {
+      const router = createRouter({ routes: testRoutes });
+      // 清除缓存不应该报错
+      router.clearCache();
+      router.clearCache("about");
+      expect(router).toBeDefined();
+    });
+  });
+
+  describe("replace 方法", () => {
+    it("应该存在 replace 方法", () => {
+      const router = createRouter({ routes: testRoutes });
+      expect(typeof router.replace).toBe("function");
+    });
+  });
+
+  describe("prefetch 方法", () => {
+    it("应该存在 prefetch 方法", () => {
+      const router = createRouter({ routes: testRoutes });
+      expect(typeof router.prefetch).toBe("function");
+    });
   });
 });

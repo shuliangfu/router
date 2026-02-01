@@ -12,7 +12,6 @@
  * 在 file:// 协议下无法正常工作。
  */
 
-// deno-lint-ignore-file no-window
 // 注意：浏览器测试中的 window 是在 browser.evaluate() 回调中使用的
 // 这些代码实际在浏览器中执行，window 是正确的全局对象
 
@@ -76,7 +75,8 @@ const browserConfig = {
  * 启动测试服务器
  */
 async function startTestServer(): Promise<number> {
-  const esbuild = await import("npm:esbuild@0.24.0");
+  // 使用 import map 中配置的 esbuild，兼容 Deno 和 Bun
+  const esbuild = await import("esbuild");
   const entryPoint = resolve(cwd(), "./src/client/mod.ts");
 
   const result = await esbuild.build({
@@ -208,7 +208,7 @@ describe("客户端路由器 - 浏览器测试", () => {
 
     if (result.error) return;
     expect(result.threw).toBe(true);
-    expect(result.message).toContain("useRouter Hook");
+    expect(result.message).toContain("useRouter");
   }, browserConfig);
 
   it("getEngine: 应该返回配置的引擎", async (ctx) => {
@@ -650,5 +650,541 @@ describe("客户端路由器 - 浏览器测试", () => {
     if (result.error) return;
     expect(result.receivedComponent).toBe("about");
     expect(result.loadedComponent).toBe(true);
+  }, serverBrowserConfig);
+
+  // ==================== start 链接拦截测试 ====================
+
+  it("start: 应该能启动链接拦截", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+
+      // start 方法应该存在
+      const hasStart = typeof router.start === "function";
+      router.start();
+
+      return { hasStart };
+    });
+
+    if (result.error) return;
+    expect(result.hasStart).toBe(true);
+  }, serverBrowserConfig);
+
+  it("start: 应该拦截同源链接点击", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(async () => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 记录路由变化
+      const routeChanges: string[] = [];
+      router.onRouteChange((match: any) => {
+        routeChanges.push(match?.route.path || "null");
+      });
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个链接并点击
+      const link = doc.createElement("a");
+      link.href = "/about";
+      link.textContent = "About";
+      doc.body.appendChild(link);
+
+      // 模拟点击
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      link.dispatchEvent(clickEvent);
+
+      // 等待路由变化
+      await new Promise((r) => setTimeout(r, 50));
+
+      // 清理
+      doc.body.removeChild(link);
+
+      return {
+        pathname: (globalThis as any).location.pathname,
+        routeChanges,
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    expect(result.pathname).toBe("/about");
+    expect(result.eventDefaultPrevented).toBe(true);
+    expect(result.routeChanges).toContain("/about");
+  }, serverBrowserConfig);
+
+  it("start: 不应该拦截外部链接", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个外部链接
+      const link = doc.createElement("a");
+      link.href = "https://example.com/page";
+      link.textContent = "External";
+      doc.body.appendChild(link);
+
+      // 模拟点击
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      link.dispatchEvent(clickEvent);
+
+      // 清理
+      doc.body.removeChild(link);
+
+      return {
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    // 外部链接不应该被阻止默认行为
+    expect(result.eventDefaultPrevented).toBe(false);
+  }, serverBrowserConfig);
+
+  it("start: 不应该拦截 target=_blank 链接", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个带 target="_blank" 的链接
+      const link = doc.createElement("a");
+      link.href = "/about";
+      link.target = "_blank";
+      link.textContent = "About (new tab)";
+      doc.body.appendChild(link);
+
+      // 模拟点击
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      link.dispatchEvent(clickEvent);
+
+      // 清理
+      doc.body.removeChild(link);
+
+      return {
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    // target="_blank" 链接不应该被阻止
+    expect(result.eventDefaultPrevented).toBe(false);
+  }, serverBrowserConfig);
+
+  it("start: 不应该拦截 data-native 链接", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/download", component: "download", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个带 data-native 的链接
+      const link = doc.createElement("a");
+      link.href = "/download";
+      link.setAttribute("data-native", "");
+      link.textContent = "Download";
+      doc.body.appendChild(link);
+
+      // 模拟点击
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      link.dispatchEvent(clickEvent);
+
+      // 清理
+      doc.body.removeChild(link);
+
+      return {
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    // data-native 链接不应该被阻止
+    expect(result.eventDefaultPrevented).toBe(false);
+  }, serverBrowserConfig);
+
+  it("start: 不应该拦截 download 链接", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/file", component: "file", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个带 download 的链接
+      const link = doc.createElement("a");
+      link.href = "/file";
+      link.download = "file.pdf";
+      link.textContent = "Download File";
+      doc.body.appendChild(link);
+
+      // 模拟点击
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      link.dispatchEvent(clickEvent);
+
+      // 清理
+      doc.body.removeChild(link);
+
+      return {
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    // download 链接不应该被阻止
+    expect(result.eventDefaultPrevented).toBe(false);
+  }, serverBrowserConfig);
+
+  it("start: 按住 Ctrl 键时不应该拦截", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个链接
+      const link = doc.createElement("a");
+      link.href = "/about";
+      link.textContent = "About";
+      doc.body.appendChild(link);
+
+      // 模拟按住 Ctrl 键点击
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        ctrlKey: true,
+      });
+      link.dispatchEvent(clickEvent);
+
+      // 清理
+      doc.body.removeChild(link);
+
+      return {
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    // Ctrl+点击不应该被阻止（用于在新标签页打开）
+    expect(result.eventDefaultPrevented).toBe(false);
+  }, serverBrowserConfig);
+
+  it("start: 按住 Meta 键时不应该拦截", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个链接
+      const link = doc.createElement("a");
+      link.href = "/about";
+      link.textContent = "About";
+      doc.body.appendChild(link);
+
+      // 模拟按住 Meta 键点击（macOS 的 Cmd 键）
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        metaKey: true,
+      });
+      link.dispatchEvent(clickEvent);
+
+      // 清理
+      doc.body.removeChild(link);
+
+      return {
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    // Meta+点击不应该被阻止（用于在新标签页打开）
+    expect(result.eventDefaultPrevented).toBe(false);
+  }, serverBrowserConfig);
+
+  it("start: 应该是幂等的", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(async () => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+
+      // 多次调用 start
+      router.start();
+      router.start();
+      router.start();
+
+      // 记录路由变化
+      let routeChangeCount = 0;
+      router.onRouteChange(() => {
+        routeChangeCount++;
+      });
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个链接并点击
+      const link = doc.createElement("a");
+      link.href = "/about";
+      link.textContent = "About";
+      doc.body.appendChild(link);
+
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      link.dispatchEvent(clickEvent);
+
+      await new Promise((r) => setTimeout(r, 50));
+      doc.body.removeChild(link);
+
+      // routeChangeCount 应该只增加一次（不会因为多次 start 而重复触发）
+      return { routeChangeCount };
+    });
+
+    if (result.error) return;
+    // 初始触发 1 次 + 导航触发 1 次 = 2 次
+    expect(result.routeChangeCount).toBe(2);
+  }, serverBrowserConfig);
+
+  it("destroy: 应该移除链接拦截器", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(() => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+      router.destroy();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个链接
+      const link = doc.createElement("a");
+      link.href = "/about";
+      link.textContent = "About";
+      doc.body.appendChild(link);
+
+      // 模拟点击
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      link.dispatchEvent(clickEvent);
+
+      doc.body.removeChild(link);
+
+      return {
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    // destroy 后链接点击不应该被阻止
+    expect(result.eventDefaultPrevented).toBe(false);
+  }, serverBrowserConfig);
+
+  it("start: 应该拦截嵌套在 a 标签内的元素点击", async (ctx) => {
+    if ((ctx as any)._browserSetupError) return;
+    const browser = (ctx as any).browser;
+    if (!browser) return;
+    if (!await prepareBrowser(browser)) return;
+
+    const result = await browser.evaluate(async () => {
+      const RouterClient = (globalThis as any).RouterClient;
+      if (!RouterClient) return { error: "RouterClient not available" };
+
+      const routes = [
+        { path: "/", component: "index", type: "static" },
+        { path: "/about", component: "about", type: "static" },
+      ];
+      const router = RouterClient.createRouter({ routes });
+      router.start();
+
+      // 获取浏览器 API（避免 Deno 类型检查错误）
+      const doc = (globalThis as any).document;
+      const BrowserMouseEvent = (globalThis as any).MouseEvent;
+
+      // 创建一个带嵌套元素的链接
+      const link = doc.createElement("a");
+      link.href = "/about";
+      const span = doc.createElement("span");
+      span.textContent = "About";
+      link.appendChild(span);
+      doc.body.appendChild(link);
+
+      // 点击 span 元素（不是直接点击 a 标签）
+      const clickEvent = new BrowserMouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+      });
+      span.dispatchEvent(clickEvent);
+
+      await new Promise((r) => setTimeout(r, 50));
+      doc.body.removeChild(link);
+
+      return {
+        pathname: (globalThis as any).location.pathname,
+        eventDefaultPrevented: clickEvent.defaultPrevented,
+      };
+    });
+
+    if (result.error) return;
+    expect(result.pathname).toBe("/about");
+    expect(result.eventDefaultPrevented).toBe(true);
   }, serverBrowserConfig);
 });
