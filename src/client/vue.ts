@@ -125,6 +125,88 @@ export interface VueNavLinkProps extends VueLinkProps {
   exact?: boolean;
 }
 
+/**
+ * Vue 组件定义（兼容 Vue 2/3）
+ */
+export interface VueComponentDefinition {
+  /** 组件名称 */
+  name: string;
+  /** 组件属性定义 */
+  props: Record<string, unknown>;
+  /** setup 函数 */
+  // deno-lint-ignore no-explicit-any
+  setup: (props: any, context: { slots: any; attrs: any }) => () => unknown;
+}
+
+/**
+ * createVueComposables 返回的组合式函数集合
+ */
+export interface VueComposables {
+  /** 获取路由器实例 */
+  useRouter: () => ClientRouter;
+  /** 获取当前路由信息（响应式） */
+  useRoute: () => VueComputed<ClientRouteMatch | null>;
+  /** 获取当前路由参数（响应式） */
+  useParams: () => VueComputed<Record<string, string>>;
+  /** 获取当前查询参数（响应式） */
+  useQuery: () => VueComputed<Record<string, string>>;
+  /** 获取当前路由元数据（响应式） */
+  useMeta: () => VueComputed<RouteMeta>;
+  /** 获取导航状态（响应式） */
+  useNavigationState: () => VueComputed<NavigationState>;
+  /** 检查路径是否活跃（响应式） */
+  useIsActive: (path: string, exact?: boolean) => VueComputed<boolean>;
+  /** 获取完整路径（响应式） */
+  useFullPath: () => VueComputed<string>;
+  /** 获取当前 hash（响应式） */
+  useHash: () => VueComputed<string>;
+}
+
+/**
+ * Vue 路由插件定义
+ */
+export interface VueRouterPlugin {
+  /** 安装方法 */
+  install: (
+    app: Vue3App | Vue2App,
+    options: VueRouterPluginOptions,
+  ) => void;
+}
+
+/**
+ * Vue 3 应用实例类型
+ */
+export interface Vue3App {
+  /** 注册全局组件 */
+  component: (name: string, component: unknown) => void;
+  /** 提供依赖 */
+  provide: (key: string | symbol, value: unknown) => void;
+  /** 应用配置 */
+  config: { globalProperties: Record<string, unknown> };
+}
+
+/**
+ * Vue 2 应用实例类型
+ */
+export interface Vue2App {
+  /** 注册全局组件 */
+  component: (name: string, component: unknown) => void;
+  /** 全局混入 */
+  mixin: (mixin: unknown) => void;
+}
+
+/**
+ * Vue 路由插件选项
+ */
+export interface VueRouterPluginOptions {
+  /** 路由器实例 */
+  router: ClientRouter;
+  /** Link 组件名称（默认：RouterLink） */
+  linkName?: string;
+  /** NavLink 组件名称（默认：RouterNavLink） */
+  navLinkName?: string;
+}
+
 // ============================================================================
 // Vue 组合式函数（Composables）- 兼容 Vue 2 和 Vue 3
 // ============================================================================
@@ -147,7 +229,7 @@ export interface VueNavLinkProps extends VueLinkProps {
  * });
  * ```
  */
-export function createVueComposables(vue: VueReactivity) {
+export function createVueComposables(vue: VueReactivity): VueComposables {
   const { ref, computed, onMounted, onUnmounted } = vue;
 
   /**
@@ -320,7 +402,7 @@ export function createVueComposables(vue: VueReactivity) {
  * const Link = createVueLinkComponent(h);
  * ```
  */
-export function createVueLinkComponent(h: VueH) {
+export function createVueLinkComponent(h: VueH): VueComponentDefinition {
   return {
     name: "RouterLink",
     props: {
@@ -441,7 +523,7 @@ export function createVueLinkComponent(h: VueH) {
 export function createVueNavLinkComponent(
   h: VueH,
   vue: { computed: VueReactivity["computed"] },
-) {
+): VueComponentDefinition {
   const { computed } = vue;
 
   return {
@@ -596,35 +678,6 @@ export function createVueNavLinkComponent(
 // ============================================================================
 
 /**
- * Vue 路由插件配置
- */
-export interface VueRouterPluginOptions {
-  /** 路由器实例 */
-  router: ClientRouter;
-  /** 全局 Link 组件名称（默认：RouterLink） */
-  linkName?: string;
-  /** 全局 NavLink 组件名称（默认：RouterNavLink） */
-  navLinkName?: string;
-}
-
-/**
- * Vue 2 应用实例接口
- */
-interface Vue2App {
-  component: (name: string, component: unknown) => void;
-  mixin: (mixin: object) => void;
-}
-
-/**
- * Vue 3 应用实例接口
- */
-interface Vue3App {
-  component: (name: string, component: unknown) => void;
-  provide: (key: string | symbol, value: unknown) => void;
-  config: { globalProperties: Record<string, unknown> };
-}
-
-/**
  * 创建 Vue 路由插件
  *
  * 同时兼容 Vue 2.7+ 和 Vue 3
@@ -668,7 +721,9 @@ interface Vue3App {
  * new Vue({ render: h => h(App) }).$mount("#app");
  * ```
  */
-export function createVueRouterPlugin(vue: VueReactivity & { h: VueH }) {
+export function createVueRouterPlugin(
+  vue: VueReactivity & { h: VueH },
+): VueRouterPlugin {
   const { h, computed } = vue;
 
   return {
