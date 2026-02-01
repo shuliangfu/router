@@ -3,7 +3,7 @@
 > 一个用于浏览器的路由导航库，提供客户端路由导航功能，支持 SPA 应用的路由管理
 
 [![JSR](https://jsr.io/badges/@dreamer/router/client)](https://jsr.io/@dreamer/router/client)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE.md)
 
 ---
 

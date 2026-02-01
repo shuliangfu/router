@@ -3,7 +3,7 @@
 > 一个兼容 Deno 和 Bun 的文件路由系统，提供统一的文件路由接口，支持服务端路由匹配
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
 
 ---
 
@@ -81,7 +81,7 @@ deno add jsr:@dreamer/router
 
 ## 环境兼容性
 
-- **运行时要求**：Deno 2.5+ 或 Bun 1.0+
+- **运行时要求**：Deno 2.6+ 或 Bun 1.3.5
 - **服务端**：✅ 支持（兼容 Deno 和 Bun 运行时，SSR 路由匹配、API 路由）
   - 使用 Deno 文件系统 API 扫描路由文件
   - 支持服务端路由匹配和 SSR 渲染
