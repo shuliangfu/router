@@ -23,6 +23,20 @@ import {
   type VueReactivity,
 } from "../src/client/vue.ts";
 
+/**
+ * Vue props 定义类型（用于测试类型断言）
+ */
+interface VuePropDef {
+  type?: unknown;
+  required?: boolean;
+  default?: unknown;
+}
+
+/**
+ * Vue 组件 props 类型（用于测试类型断言）
+ */
+type VuePropsMap = Record<string, VuePropDef>;
+
 // 模拟 Vue 响应式 API
 function createMockVueReactivity(): VueReactivity {
   return {
@@ -231,11 +245,12 @@ describe("Vue 路由模块", () => {
 
     it("Link 组件应该有正确的 props 定义", () => {
       const Link = createVueLinkComponent(mockH);
+      const props = Link.props as VuePropsMap;
 
-      expect(Link.props.to.required).toBe(true);
-      expect(Link.props.replace.default).toBe(false);
-      expect(Link.props.prefetch.default).toBe(false);
-      expect(Link.props.disabled.default).toBe(false);
+      expect((props.to as VuePropDef).required).toBe(true);
+      expect((props.replace as VuePropDef).default).toBe(false);
+      expect((props.prefetch as VuePropDef).default).toBe(false);
+      expect((props.disabled as VuePropDef).default).toBe(false);
     });
   });
 
@@ -256,15 +271,18 @@ describe("Vue 路由模块", () => {
       const NavLink = createVueNavLinkComponent(mockH, {
         computed: vue.computed,
       });
+      const props = NavLink.props as VuePropsMap;
 
-      expect(NavLink.props.activeClass).toBeDefined();
-      expect(NavLink.props.activeClass.default).toBe("router-link-active");
-      expect(NavLink.props.exactActiveClass).toBeDefined();
-      expect(NavLink.props.exactActiveClass.default).toBe(
+      expect(props.activeClass).toBeDefined();
+      expect((props.activeClass as VuePropDef).default).toBe(
+        "router-link-active",
+      );
+      expect(props.exactActiveClass).toBeDefined();
+      expect((props.exactActiveClass as VuePropDef).default).toBe(
         "router-link-exact-active",
       );
-      expect(NavLink.props.exact).toBeDefined();
-      expect(NavLink.props.exact.default).toBe(false);
+      expect(props.exact).toBeDefined();
+      expect((props.exact as VuePropDef).default).toBe(false);
     });
   });
 

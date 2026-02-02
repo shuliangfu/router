@@ -106,7 +106,9 @@ interface BrowserGlobalThis {
     ) => void;
     title: string;
   };
-  scrollTo?: (options: { top: number; left: number; behavior?: string }) => void;
+  scrollTo?: (
+    options: { top: number; left: number; behavior?: string },
+  ) => void;
   scrollX?: number;
   scrollY?: number;
 }
@@ -229,7 +231,10 @@ export type ComponentLoader = (component: string) => Promise<unknown>;
 /**
  * 导航状态变化回调
  */
-export type NavigationStateCallback = (state: NavigationState, error?: Error) => void;
+export type NavigationStateCallback = (
+  state: NavigationState,
+  error?: Error,
+) => void;
 
 // ============================================================================
 // 全局路由器实例（用于 Hook）
@@ -259,6 +264,13 @@ export function getGlobalRouter(): ClientRouter | null {
 // ============================================================================
 
 /**
+ * 缓存大小限制常量
+ * 用于防止内存泄漏
+ */
+const MAX_SCROLL_POSITIONS = 100; // 最多保存 100 个滚动位置
+const MAX_COMPONENT_CACHE = 50; // 最多缓存 50 个组件
+
+/**
  * 客户端路由器类
  * 提供客户端路由导航、匹配等功能
  */
@@ -279,6 +291,10 @@ export class ClientRouter {
   private componentLoader: ComponentLoader | null = null;
   private componentCache: Map<string, unknown> = new Map();
   private scrollPositions: Map<string, ScrollPosition> = new Map();
+  /** 滚动位置访问顺序（用于 LRU 淘汰） */
+  private scrollPositionOrder: string[] = [];
+  /** 组件缓存访问顺序（用于 LRU 淘汰） */
+  private componentCacheOrder: string[] = [];
   private isStarted = false;
   private navigationState: NavigationState = "idle";
   private currentNavigationId = 0;
@@ -353,13 +369,21 @@ export class ClientRouter {
       if (this.options.mode === "hash") {
         const hashPath = `#${path}`;
         if (options.replace) {
-          browserGlobal.history.replaceState(options.state || null, "", hashPath);
+          browserGlobal.history.replaceState(
+            options.state || null,
+            "",
+            hashPath,
+          );
         } else {
           browserGlobal.history.pushState(options.state || null, "", hashPath);
         }
       } else {
         if (options.replace) {
-          browserGlobal.history.replaceState(options.state || null, "", fullPath);
+          browserGlobal.history.replaceState(
+            options.state || null,
+            "",
+            fullPath,
+          );
         } else {
           browserGlobal.history.pushState(options.state || null, "", fullPath);
         }
@@ -377,7 +401,10 @@ export class ClientRouter {
       this.setNavigationState("idle");
     } catch (error) {
       // 设置错误状态
-      this.setNavigationState("error", error instanceof Error ? error : new Error(String(error)));
+      this.setNavigationState(
+        "error",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       throw error;
     }
   }
@@ -431,7 +458,9 @@ export class ClientRouter {
     }
 
     // 移除基础路径
-    if (this.options.basePath && pathToMatch.startsWith(this.options.basePath)) {
+    if (
+      this.options.basePath && pathToMatch.startsWith(this.options.basePath)
+    ) {
       pathToMatch = pathToMatch.slice(this.options.basePath.length) || "/";
     }
 
@@ -724,8 +753,32 @@ export class ClientRouter {
   clearCache(component?: string): void {
     if (component) {
       this.componentCache.delete(component);
+      // 从 LRU 顺序中移除
+      const index = this.componentCacheOrder.indexOf(component);
+      if (index > -1) {
+        this.componentCacheOrder.splice(index, 1);
+      }
     } else {
       this.componentCache.clear();
+      this.componentCacheOrder = [];
+    }
+  }
+
+  /**
+   * 清除滚动位置缓存
+   * @param path 路径（可选，不传则清除所有）
+   */
+  clearScrollPositions(path?: string): void {
+    if (path) {
+      this.scrollPositions.delete(path);
+      // 从 LRU 顺序中移除
+      const index = this.scrollPositionOrder.indexOf(path);
+      if (index > -1) {
+        this.scrollPositionOrder.splice(index, 1);
+      }
+    } else {
+      this.scrollPositions.clear();
+      this.scrollPositionOrder = [];
     }
   }
 
@@ -765,8 +818,13 @@ export class ClientRouter {
     this.navigationStateCallbacks = [];
     this.currentMatch = null;
     this.componentLoader = null;
+
+    // 清除缓存和 LRU 顺序数组
     this.componentCache.clear();
+    this.componentCacheOrder = [];
     this.scrollPositions.clear();
+    this.scrollPositionOrder = [];
+
     this.isStarted = false;
 
     // 清除全局路由器
@@ -996,16 +1054,36 @@ export class ClientRouter {
   }
 
   /**
-   * 保存滚动位置
+   * 保存滚动位置（带 LRU 淘汰策略，防止内存泄漏）
    */
   private saveScrollPosition(): void {
     const browserGlobal = globalThis as unknown as BrowserGlobalThis;
-    if (browserGlobal.scrollX !== undefined && browserGlobal.scrollY !== undefined) {
+    if (
+      browserGlobal.scrollX !== undefined && browserGlobal.scrollY !== undefined
+    ) {
       const pathname = this.getPathname();
+
+      // 更新 LRU 顺序
+      const existingIndex = this.scrollPositionOrder.indexOf(pathname);
+      if (existingIndex > -1) {
+        // 已存在，移动到末尾（最近使用）
+        this.scrollPositionOrder.splice(existingIndex, 1);
+      }
+      this.scrollPositionOrder.push(pathname);
+
+      // 保存滚动位置
       this.scrollPositions.set(pathname, {
         left: browserGlobal.scrollX,
         top: browserGlobal.scrollY,
       });
+
+      // LRU 淘汰：超过限制时删除最旧的
+      while (this.scrollPositions.size > MAX_SCROLL_POSITIONS) {
+        const oldest = this.scrollPositionOrder.shift();
+        if (oldest) {
+          this.scrollPositions.delete(oldest);
+        }
+      }
     }
   }
 
@@ -1136,17 +1214,35 @@ export class ClientRouter {
   }
 
   /**
-   * 加载组件
+   * 加载组件（带 LRU 淘汰策略，防止内存泄漏）
    */
   private loadComponent(component: string): Promise<unknown> {
     // 检查缓存
     if (this.componentCache.has(component)) {
+      // 更新 LRU 顺序
+      const existingIndex = this.componentCacheOrder.indexOf(component);
+      if (existingIndex > -1) {
+        this.componentCacheOrder.splice(existingIndex, 1);
+      }
+      this.componentCacheOrder.push(component);
+
       return Promise.resolve(this.componentCache.get(component));
     }
 
     if (this.componentLoader) {
       return this.componentLoader(component).then((module) => {
+        // 添加到缓存和 LRU 顺序
         this.componentCache.set(component, module);
+        this.componentCacheOrder.push(component);
+
+        // LRU 淘汰：超过限制时删除最旧的
+        while (this.componentCache.size > MAX_COMPONENT_CACHE) {
+          const oldest = this.componentCacheOrder.shift();
+          if (oldest) {
+            this.componentCache.delete(oldest);
+          }
+        }
+
         return module;
       });
     }
@@ -1250,28 +1346,24 @@ export function useIsActive(path: string, exact = false): boolean {
 // ============================================================================
 
 export {
-  createLinkProps,
-  createNavLinkProps,
   createLinkComponent,
+  createLinkProps,
   createNavLinkComponent,
+  createNavLinkProps,
   isPathActive,
   navigate,
   prefetch,
 } from "./components.ts";
 
 export type {
-  LinkProps,
-  NavLinkProps,
   LinkAttributes,
+  LinkProps,
   NavLinkAttributes,
+  NavLinkProps,
 } from "./components.ts";
 
 // ============================================================================
 // 导出类型
 // ============================================================================
 
-export type {
-  BrowserElement,
-  BrowserMouseEvent,
-  BrowserGlobalThis,
-};
+export type { BrowserElement, BrowserGlobalThis, BrowserMouseEvent };

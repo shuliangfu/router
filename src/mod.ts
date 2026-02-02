@@ -176,18 +176,30 @@ export interface RouteMatch {
 // ============================================================================
 
 /**
+ * 服务端模块缓存大小限制
+ * 用于防止内存泄漏
+ */
+const MAX_MODULE_CACHE = 200;
+
+/**
  * 文件路由路由器类
  * 提供文件路由扫描、匹配等功能
  */
 export class Router {
   private routes: Route[] = [];
-  private options: Required<Omit<RouterOptions, "redirects" | "middlewares" | "skipAppValidation">> & {
-    redirects: RedirectConfig[];
-    middlewares: MiddlewareFunction[];
-    skipAppValidation: boolean;
-  };
+  private options:
+    & Required<
+      Omit<RouterOptions, "redirects" | "middlewares" | "skipAppValidation">
+    >
+    & {
+      redirects: RedirectConfig[];
+      middlewares: MiddlewareFunction[];
+      skipAppValidation: boolean;
+    };
   private specialFiles: Map<string, string> = new Map();
   private moduleCache: Map<string, any> = new Map();
+  /** 模块缓存访问顺序（用于 LRU 淘汰） */
+  private moduleCacheOrder: string[] = [];
 
   /**
    * 创建路由器实例
@@ -216,7 +228,9 @@ export class Router {
   async scan(): Promise<void> {
     this.routes = [];
     this.specialFiles.clear();
+    // 清除缓存和 LRU 顺序
     this.moduleCache.clear();
+    this.moduleCacheOrder = [];
 
     try {
       await this.scanDirectory(this.options.routesDir, "");
@@ -318,7 +332,10 @@ export class Router {
    */
   async handleRequest(
     request: Request,
-    handler: (match: RouteMatch | null, context: MiddlewareContext) => Promise<Response>,
+    handler: (
+      match: RouteMatch | null,
+      context: MiddlewareContext,
+    ) => Promise<Response>,
   ): Promise<Response> {
     const url = new URL(request.url);
     const match = await this.match(url.pathname + url.search, {
@@ -412,18 +429,37 @@ export class Router {
   }
 
   /**
-   * 加载模块
+   * 加载模块（带 LRU 淘汰策略，防止内存泄漏）
    * @param filePath 文件路径
    * @returns 模块
    */
   async loadModule(filePath: string): Promise<any> {
     // 检查缓存
     if (this.moduleCache.has(filePath)) {
+      // 更新 LRU 顺序
+      const existingIndex = this.moduleCacheOrder.indexOf(filePath);
+      if (existingIndex > -1) {
+        this.moduleCacheOrder.splice(existingIndex, 1);
+      }
+      this.moduleCacheOrder.push(filePath);
+
       return this.moduleCache.get(filePath);
     }
 
     const module = await this.importModule(filePath);
+
+    // 添加到缓存和 LRU 顺序
     this.moduleCache.set(filePath, module);
+    this.moduleCacheOrder.push(filePath);
+
+    // LRU 淘汰：超过限制时删除最旧的
+    while (this.moduleCache.size > MAX_MODULE_CACHE) {
+      const oldest = this.moduleCacheOrder.shift();
+      if (oldest) {
+        this.moduleCache.delete(oldest);
+      }
+    }
+
     return module;
   }
 
@@ -434,8 +470,14 @@ export class Router {
   clearCache(filePath?: string): void {
     if (filePath) {
       this.moduleCache.delete(filePath);
+      // 从 LRU 顺序中移除
+      const index = this.moduleCacheOrder.indexOf(filePath);
+      if (index > -1) {
+        this.moduleCacheOrder.splice(index, 1);
+      }
     } else {
       this.moduleCache.clear();
+      this.moduleCacheOrder = [];
     }
   }
 
@@ -467,7 +509,9 @@ export class Router {
   /**
    * 检查重定向
    */
-  private checkRedirects(pathname: string): { destination: string; statusCode: number } | null {
+  private checkRedirects(
+    pathname: string,
+  ): { destination: string; statusCode: number } | null {
     for (const redirect of this.options.redirects) {
       const match = this.matchRedirectSource(redirect.source, pathname);
       if (match) {
@@ -477,7 +521,8 @@ export class Router {
           destination = destination.replace(`:${key}`, value);
         }
 
-        const statusCode = redirect.statusCode || (redirect.permanent ? 301 : 302);
+        const statusCode = redirect.statusCode ||
+          (redirect.permanent ? 301 : 302);
         return { destination, statusCode };
       }
     }
@@ -534,13 +579,18 @@ export class Router {
   /**
    * 加载路由级别的中间件
    */
-  private async loadRouteMiddlewares(route: Route | null | undefined): Promise<MiddlewareFunction[]> {
+  private async loadRouteMiddlewares(
+    route: Route | null | undefined,
+  ): Promise<MiddlewareFunction[]> {
     if (!route) return [];
 
     const middlewares: MiddlewareFunction[] = [];
 
     // 查找路由目录下的 _middleware.ts
-    const routeDir = route.fullPath.substring(0, route.fullPath.lastIndexOf("/"));
+    const routeDir = route.fullPath.substring(
+      0,
+      route.fullPath.lastIndexOf("/"),
+    );
     const middlewarePath = `${routeDir}/_middleware.ts`;
 
     try {
@@ -601,7 +651,9 @@ export class Router {
       const specialType = this.getSpecialFileType(fileName);
       if (specialType) {
         // 处理嵌套的特殊文件
-        const key = relativePath ? `${relativePath}/${specialType}` : specialType;
+        const key = relativePath
+          ? `${relativePath}/${specialType}`
+          : specialType;
         this.specialFiles.set(key, fullPath);
         // 根目录的特殊文件也用简单 key 保存
         if (!relativePath) {
@@ -990,8 +1042,8 @@ export function notFound(message = "Not Found"): Response {
 // ============================================================================
 
 export type {
-  RouteMeta as ServerRouteMeta,
-  RedirectConfig as ServerRedirectConfig,
   MiddlewareContext as ServerMiddlewareContext,
   MiddlewareFunction as ServerMiddlewareFunction,
+  RedirectConfig as ServerRedirectConfig,
+  RouteMeta as ServerRouteMeta,
 };
