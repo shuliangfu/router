@@ -424,7 +424,7 @@ export class Router {
       .filter((r) => !r.isApi && !r.isSpecial)
       .map((r) => ({
         path: r.path,
-        component: r.file.replace(/\.(tsx?|jsx?)$/, ""),
+        component: r.file.replace(/\.(tsx?|jsx?|vue)$/, ""),
         type: r.type,
         meta: r.meta,
       }));
