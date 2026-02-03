@@ -1,11 +1,10 @@
 {
   "name": "@dreamer/router",
-  "version": "1.0.0-beta.9",
+  "version": "1.0.0-beta.10",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
-    "./client": "./src/client/mod.ts",
-    "./client/vue": "./src/client/vue.ts"
+    "./client": "./src/client/mod.ts"
   },
   "exclude": [
     "tests/data/**"
@@ -15,7 +14,6 @@
       "src/mod.ts",
       "src/client/mod.ts",
       "src/client/components.ts",
-      "src/client/vue.ts",
       "LICENSE.md",
       "README.md"
     ],

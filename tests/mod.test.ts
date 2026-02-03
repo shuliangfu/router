@@ -90,8 +90,8 @@ describe("Router", () => {
       }
 
       expect(error).toBeTruthy();
-      // 默认 engine 为 preact，提示 _app.tsx；Vue 时为 _app.vue
-      expect(error?.message).toMatch(/_app\.(tsx|vue)/);
+      // 默认提示 _app.tsx
+      expect(error?.message).toMatch(/_app\.tsx/);
     });
 
     it("应该扫描特殊文件", async () => {

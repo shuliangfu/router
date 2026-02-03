@@ -7,7 +7,7 @@
  * - 文件路由系统：基于文件系统自动生成路由，文件结构即路由结构
  * - 路由类型支持：静态路由、动态路由、通配符路由、可选参数路由
  * - API 路由支持：RESTful 形式（HTTP 方法）和操作方法形式（函数名）
- * - 特殊文件处理：_app（.tsx 或 .vue）、_layout、_404、_error、_middleware.ts
+ * - 特殊文件处理：_app（.tsx）、_layout、_404、_error、_middleware.ts
  * - 服务端路由匹配：路由参数解析、查询参数解析、SSR 支持
  * - 路由重定向：支持路由级别的重定向配置
  * - 中间件链：支持多个中间件链式执行
@@ -100,8 +100,8 @@ export type MiddlewareFunction = (
 export interface RouterOptions {
   /** 路由文件目录 */
   routesDir: string;
-  /** 渲染引擎（默认：preact；vue3 时缺失 _app 提示 _app.vue，否则提示 _app.tsx） */
-  engine?: "preact" | "react" | "vue3";
+  /** 渲染引擎（默认：preact；缺失 _app 时提示 _app.tsx） */
+  engine?: "preact" | "react";
   /** 是否启用 SSR（默认：true） */
   ssr?: boolean;
   /** API 路由形式（restful 或 action，默认：restful） */
@@ -110,7 +110,7 @@ export interface RouterOptions {
   redirects?: RedirectConfig[];
   /** 全局中间件列表 */
   middlewares?: MiddlewareFunction[];
-  /** 是否跳过 _app 验证（默认：false，缺省时根据 engine 提示 _app.tsx 或 _app.vue） */
+  /** 是否跳过 _app 验证（默认：false） */
   skipAppValidation?: boolean;
 }
 
@@ -198,7 +198,7 @@ export class Router {
       redirects: RedirectConfig[];
       middlewares: MiddlewareFunction[];
       skipAppValidation: boolean;
-      engine: "preact" | "react" | "vue3";
+      engine: "preact" | "react";
     };
   private specialFiles: Map<string, string> = new Map();
   private moduleCache: Map<string, any> = new Map();
@@ -222,11 +222,10 @@ export class Router {
   }
 
   /**
-   * 根据 engine 返回缺失时应提示的应用入口文件名（_app.tsx 或 _app.vue）
+   * 返回缺失时应提示的应用入口文件名（_app.tsx）
    */
-  private getExpectedAppFile(): "_app.tsx" | "_app.vue" {
-    const e = this.options.engine;
-    return e === "vue3" ? "_app.vue" : "_app.tsx";
+  private getExpectedAppFile(): "_app.tsx" {
+    return "_app.tsx";
   }
 
   // ==========================================================================
@@ -254,7 +253,7 @@ export class Router {
       );
     }
 
-    // 验证 _app 是否存在（可配置跳过；Vue 项目提示 _app.vue，否则提示 _app.tsx）
+    // 验证 _app 是否存在（可配置跳过）
     if (!this.options.skipAppValidation && !this.specialFiles.has("_app")) {
       const expected = this.getExpectedAppFile();
       throw new Error(
@@ -424,7 +423,7 @@ export class Router {
       .filter((r) => !r.isApi && !r.isSpecial)
       .map((r) => ({
         path: r.path,
-        component: r.file.replace(/\.(tsx?|jsx?|vue)$/, ""),
+        component: r.file.replace(/\.(tsx?|jsx?)$/, ""),
         type: r.type,
         meta: r.meta,
       }));
@@ -497,7 +496,7 @@ export class Router {
   /**
    * 获取渲染引擎类型
    */
-  getEngine(): "preact" | "react" | "vue3" {
+  getEngine(): "preact" | "react" {
     return this.options.engine ?? "preact";
   }
 
@@ -676,10 +675,8 @@ export class Router {
       return;
     }
 
-    // 检查是否为路由文件（支持 .tsx、.ts、.vue）
-    const isRouteFile = fileName.endsWith(".tsx") ||
-      fileName.endsWith(".ts") ||
-      fileName.endsWith(".vue");
+    // 检查是否为路由文件（支持 .tsx、.ts）
+    const isRouteFile = fileName.endsWith(".tsx") || fileName.endsWith(".ts");
     if (!isRouteFile) {
       return;
     }
@@ -710,12 +707,10 @@ export class Router {
   private getSpecialFileType(
     fileName: string,
   ): "_app" | "_layout" | "_404" | "_error" | "_middleware" | undefined {
-    if (fileName === "_app.tsx" || fileName === "_app.vue") return "_app";
-    if (fileName === "_layout.tsx" || fileName === "_layout.vue") {
-      return "_layout";
-    }
-    if (fileName === "_404.tsx" || fileName === "_404.vue") return "_404";
-    if (fileName === "_error.tsx" || fileName === "_error.vue") return "_error";
+    if (fileName === "_app.tsx") return "_app";
+    if (fileName === "_layout.tsx") return "_layout";
+    if (fileName === "_404.tsx") return "_404";
+    if (fileName === "_error.tsx") return "_error";
     if (fileName === "_middleware.ts") return "_middleware";
     return undefined;
   }
@@ -728,7 +723,7 @@ export class Router {
     fileName: string,
     _isApi: boolean,
   ): { path: string; file: string; type: RouteType } {
-    const nameWithoutExt = fileName.replace(/\.(tsx|ts|vue)$/, "");
+    const nameWithoutExt = fileName.replace(/\.(tsx|ts)$/, "");
 
     // 处理 index 文件
     if (nameWithoutExt === "index") {

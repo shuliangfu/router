@@ -4,7 +4,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
-[![Tests](https://img.shields.io/badge/tests-158%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -112,7 +112,6 @@ import { createRouter } from "jsr:@dreamer/router/client";
 - **多引擎支持**：
   - Preact（默认）
   - React
-  - Vue3
 - **Hooks**：
   - `useRouter()` 获取路由器实例
   - `useRoute()` 获取当前路由
@@ -279,119 +278,6 @@ function Navigation() {
 }
 ```
 
-### Vue 2/3 使用
-
-Vue 有专门的适配模块 `@dreamer/router/client/vue`，支持：
-- **Vue 3.x**（原生支持）
-- **Vue 2.7+**（原生支持组合式 API）
-
-> 注意：不支持 Vue 2.6 及以下版本
-
-#### Vue 3 示例
-
-```typescript
-import {
-  createVueComposables,
-  createVueLinkComponent,
-  createVueNavLinkComponent,
-  createVueRouterPlugin,
-} from "@dreamer/router/client/vue";
-import { createRouter } from "@dreamer/router/client";
-import {
-  h, ref, computed, onMounted, onUnmounted, watch,
-  defineComponent, createApp,
-} from "vue";
-
-// 创建路由器
-const router = createRouter({
-  routes: [
-    { path: "/", component: "index" },
-    { path: "/about", component: "about" },
-  ],
-  engine: "vue3",
-});
-router.start();
-
-// 创建组合式函数
-const { useRouter, useRoute, useParams } = createVueComposables({
-  ref, computed, onMounted, onUnmounted, watch,
-});
-
-// 创建组件
-const Link = createVueLinkComponent(h);
-const NavLink = createVueNavLinkComponent(h, { computed });
-
-// 在组件中使用
-const UserPage = defineComponent({
-  components: { Link, NavLink },
-  setup() {
-    const router = useRouter();
-    const route = useRoute();
-    const params = useParams();
-
-    const goToAbout = () => router.navigate("/about");
-
-    return { route, params, goToAbout };
-  },
-  template: `
-    <div>
-      <h1>用户页面</h1>
-      <p>用户 ID: {{ params.value.id }}</p>
-      <nav>
-        <Link to="/">首页</Link>
-        <NavLink to="/about" activeClass="active">关于</NavLink>
-      </nav>
-      <button @click="goToAbout">前往关于页</button>
-    </div>
-  `,
-});
-
-// 使用插件方式全局注册
-const app = createApp(App);
-const routerPlugin = createVueRouterPlugin({
-  h, ref, computed, onMounted, onUnmounted, watch,
-});
-app.use(routerPlugin, { router });
-app.mount("#app");
-```
-
-#### Vue 2.7+ 示例
-
-```typescript
-// Vue 2.7+ 原生支持组合式 API，用法与 Vue 3 相同
-import Vue from "vue";
-import {
-  h, ref, computed, onMounted, onUnmounted, watch,
-} from "vue";
-import {
-  createVueComposables,
-  createVueLinkComponent,
-  createVueRouterPlugin,
-} from "@dreamer/router/client/vue";
-import { createRouter } from "@dreamer/router/client";
-
-// 创建路由器
-const router = createRouter({
-  routes: [...],
-  engine: "vue3",
-});
-router.start();
-
-// 创建组合式函数和组件（与 Vue 3 相同的 API）
-const { useRouter, useRoute } = createVueComposables({
-  ref, computed, onMounted, onUnmounted, watch,
-});
-const Link = createVueLinkComponent(h);
-
-// 安装路由插件
-const routerPlugin = createVueRouterPlugin({
-  h, ref, computed, onMounted, onUnmounted, watch,
-});
-Vue.use(routerPlugin, { router });
-
-new Vue({ render: h => h(App) }).$mount("#app");
-```
-
 ### Hooks 使用
 
 ```typescript
@@ -517,7 +403,7 @@ await router.navigate("/about");
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | routesDir | string | - | 路由文件目录 |
-| engine | "preact" \| "react" \| "vue3" | "preact" | 渲染引擎 |
+| engine | "preact" \| "react" | "preact" | 渲染引擎 |
 | ssr | boolean | true | 是否启用 SSR |
 | apiMode | "restful" \| "action" | "restful" | API 路由形式 |
 | redirects | RedirectConfig[] | [] | 重定向配置 |
@@ -557,7 +443,7 @@ await router.navigate("/about");
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | routes | ClientRoute[] | - | 路由配置列表 |
-| engine | "preact" \| "react" \| "vue3" | "preact" | 渲染引擎 |
+| engine | "preact" \| "react" | "preact" | 渲染引擎 |
 | basePath | string | "" | 基础路径 |
 | mode | "history" \| "hash" | "history" | 路由模式 |
 | scrollBehavior | ScrollBehaviorHandler | - | 滚动行为函数 |
@@ -651,28 +537,27 @@ type RouterMode = "history" | "hash";
 
 | 指标 | 数值 |
 |------|------|
-| 总测试数 | 158 |
-| 通过 | 158 |
+| 总测试数 | 130 |
+| 通过 | 130 |
 | 失败 | 0 |
 | 通过率 | 100% |
-| 测试时间 | 2026-02-02 |
+| 测试时间 | 2026-02-03 |
 | 执行时间 | ~31s |
 
 ### 运行时兼容性
 
 | 运行时 | 测试数 | 通过 | 状态 |
 |--------|--------|------|------|
-| Deno | 158 | 158 | ✅ |
-| Bun | 158 | 158 | ✅ |
+| Deno | 130 | 130 | ✅ |
+| Bun | 130 | 130 | ✅ |
 
 ### 测试文件覆盖
 
 | 测试文件 | 测试数量 | 覆盖内容 |
 |----------|----------|----------|
 | client-browser.test.ts | 27 | 浏览器测试：导航、守卫、链接拦截、历史操作 |
-| client.test.ts | 71 | 客户端单元测试：路由匹配、元数据、basePath、hash 模式 |
+| client.test.ts | 69 | 客户端单元测试：路由匹配、元数据、basePath、hash 模式 |
 | mod.test.ts | 34 | 服务端测试：扫描、匹配、重定向、中间件 |
-| vue.test.ts | 26 | Vue 适配：Composables、Link/NavLink、插件 |
 
 详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 

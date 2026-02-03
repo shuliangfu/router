@@ -46,11 +46,6 @@ describe("ClientRouter", () => {
       expect(router).toBeDefined();
     });
 
-    it("应该支持 vue3 引擎", () => {
-      const router = createRouter({ routes: testRoutes, engine: "vue3" });
-      expect(router).toBeDefined();
-    });
-
     it("应该支持空路由列表", () => {
       const router = createRouter({ routes: [] });
       expect(router.getRoutes()).toHaveLength(0);
@@ -354,11 +349,6 @@ describe("ClientRouter - getEngine", () => {
   it("应该返回配置的引擎 react", () => {
     const router = createRouter({ routes: testRoutes, engine: "react" });
     expect(router.getEngine()).toBe("react");
-  });
-
-  it("应该返回配置的引擎 vue3", () => {
-    const router = createRouter({ routes: testRoutes, engine: "vue3" });
-    expect(router.getEngine()).toBe("vue3");
   });
 });
 

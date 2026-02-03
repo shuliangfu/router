@@ -222,21 +222,18 @@ describe("客户端路由器 - 浏览器测试", () => {
 
       const r1 = RouterClient.createRouter({ routes: [], engine: "preact" });
       const r2 = RouterClient.createRouter({ routes: [], engine: "react" });
-      const r3 = RouterClient.createRouter({ routes: [], engine: "vue3" });
-      const r4 = RouterClient.createRouter({ routes: [] });
+      const r3 = RouterClient.createRouter({ routes: [] });
 
       return {
         preact: r1.getEngine(),
         react: r2.getEngine(),
-        vue3: r3.getEngine(),
-        defaultEngine: r4.getEngine(),
+        defaultEngine: r3.getEngine(),
       };
     });
 
     if (result.error) return;
     expect(result.preact).toBe("preact");
     expect(result.react).toBe("react");
-    expect(result.vue3).toBe("vue3");
     expect(result.defaultEngine).toBe("preact");
   }, browserConfig);
 
