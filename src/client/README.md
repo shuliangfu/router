@@ -465,7 +465,7 @@ interface ClientRouterOptions {
   /** 路由配置列表（由服务端生成） */
   routes: ClientRoute[];
   /** 渲染引擎类型（preact、react 或 vue3，默认：preact） */
-  engine?: "preact" | "react" | "vue3";
+  engine?: "preact" | "react" | "vue2" | "vue3";
 }
 ```
 
