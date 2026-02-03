@@ -100,8 +100,8 @@ export type MiddlewareFunction = (
 export interface RouterOptions {
   /** 路由文件目录 */
   routesDir: string;
-  /** 渲染引擎（默认：preact；vue2/vue3 时缺失 _app 提示 _app.vue，否则提示 _app.tsx） */
-  engine?: "preact" | "react" | "vue2" | "vue3";
+  /** 渲染引擎（默认：preact；vue3 时缺失 _app 提示 _app.vue，否则提示 _app.tsx） */
+  engine?: "preact" | "react" | "vue3";
   /** 是否启用 SSR（默认：true） */
   ssr?: boolean;
   /** API 路由形式（restful 或 action，默认：restful） */
@@ -198,7 +198,7 @@ export class Router {
       redirects: RedirectConfig[];
       middlewares: MiddlewareFunction[];
       skipAppValidation: boolean;
-      engine: "preact" | "react" | "vue2" | "vue3";
+      engine: "preact" | "react" | "vue3";
     };
   private specialFiles: Map<string, string> = new Map();
   private moduleCache: Map<string, any> = new Map();
@@ -226,7 +226,7 @@ export class Router {
    */
   private getExpectedAppFile(): "_app.tsx" | "_app.vue" {
     const e = this.options.engine;
-    return e === "vue2" || e === "vue3" ? "_app.vue" : "_app.tsx";
+    return e === "vue3" ? "_app.vue" : "_app.tsx";
   }
 
   // ==========================================================================
@@ -497,7 +497,7 @@ export class Router {
   /**
    * 获取渲染引擎类型
    */
-  getEngine(): "preact" | "react" | "vue2" | "vue3" {
+  getEngine(): "preact" | "react" | "vue3" {
     return this.options.engine ?? "preact";
   }
 

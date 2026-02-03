@@ -517,7 +517,7 @@ await router.navigate("/about");
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | routesDir | string | - | 路由文件目录 |
-| engine | "preact" \| "react" \| "vue2" \| "vue3" | "preact" | 渲染引擎 |
+| engine | "preact" \| "react" \| "vue3" | "preact" | 渲染引擎 |
 | ssr | boolean | true | 是否启用 SSR |
 | apiMode | "restful" \| "action" | "restful" | API 路由形式 |
 | redirects | RedirectConfig[] | [] | 重定向配置 |

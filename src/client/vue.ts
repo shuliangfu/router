@@ -167,10 +167,7 @@ export interface VueComposables {
  */
 export interface VueRouterPlugin {
   /** 安装方法 */
-  install: (
-    app: Vue3App | Vue2App,
-    options: VueRouterPluginOptions,
-  ) => void;
+  install: (app: Vue3App, options: VueRouterPluginOptions) => void;
 }
 
 /**
@@ -183,16 +180,6 @@ export interface Vue3App {
   provide: (key: string | symbol, value: unknown) => void;
   /** 应用配置 */
   config: { globalProperties: Record<string, unknown> };
-}
-
-/**
- * Vue 2 应用实例类型
- */
-export interface Vue2App {
-  /** 注册全局组件 */
-  component: (name: string, component: unknown) => void;
-  /** 全局混入 */
-  mixin: (mixin: unknown) => void;
 }
 
 /**
@@ -730,10 +717,7 @@ export function createVueRouterPlugin(
     /**
      * Vue 3 安装方法
      */
-    install(
-      app: Vue3App | Vue2App,
-      options: VueRouterPluginOptions,
-    ) {
+    install(app: Vue3App, options: VueRouterPluginOptions) {
       const { router, linkName = "RouterLink", navLinkName = "RouterNavLink" } =
         options;
 
@@ -748,20 +732,9 @@ export function createVueRouterPlugin(
       app.component(linkName, Link);
       app.component(navLinkName, NavLink);
 
-      // Vue 3 特有的功能
-      if ("provide" in app) {
-        // Vue 3: 使用 provide 注入
-        app.provide("$router", router);
-        app.config.globalProperties.$router = router;
-      } else if ("mixin" in app) {
-        // Vue 2: 使用 mixin 注入
-        app.mixin({
-          beforeCreate() {
-            // deno-lint-ignore no-explicit-any
-            (this as any).$router = router;
-          },
-        });
-      }
+      // Vue 3: 使用 provide 注入
+      app.provide("$router", router);
+      app.config.globalProperties.$router = router;
     },
   };
 }
