@@ -55,7 +55,7 @@ describe("Router", () => {
     it("应该支持自定义配置", () => {
       const router = new Router({
         routesDir: testRoutesDir,
-        framework: "react",
+        engine: "react",
         ssr: false,
         apiMode: "action",
       });
@@ -73,7 +73,7 @@ describe("Router", () => {
       expect(routes.length).toBeGreaterThan(0);
     });
 
-    it("应该在缺少 _app.tsx 时抛出错误", async () => {
+    it("应该在缺少 _app 时抛出错误", async () => {
       await cleanupTestRoutes();
       await mkdir(testRoutesDir, { recursive: true });
       await writeTextFile(
@@ -90,7 +90,8 @@ describe("Router", () => {
       }
 
       expect(error).toBeTruthy();
-      expect(error?.message).toContain("_app.tsx");
+      // 默认 engine 为 preact，提示 _app.tsx；Vue 时为 _app.vue
+      expect(error?.message).toMatch(/_app\.(tsx|vue)/);
     });
 
     it("应该扫描特殊文件", async () => {
@@ -440,9 +441,9 @@ describe("Router - 新功能测试", () => {
       await setupTestRoutes();
       const router = createRouter({ routesDir: testRoutesDir });
 
-      let middlewareCalled = false;
+      let _middlewareCalled = false;
       router.use(async (_ctx, next) => {
-        middlewareCalled = true;
+        _middlewareCalled = true;
         return await next();
       });
 
@@ -468,7 +469,7 @@ describe("Router - 新功能测试", () => {
   });
 
   describe("skipAppValidation", () => {
-    it("应该支持跳过 _app.tsx 验证", async () => {
+    it("应该支持跳过 _app 验证", async () => {
       await cleanupTestRoutes();
       await mkdir(testRoutesDir, { recursive: true });
       await writeTextFile(
@@ -476,7 +477,7 @@ describe("Router - 新功能测试", () => {
         "export default () => <div>Home</div>;",
       );
 
-      // 没有 _app.tsx 但跳过验证
+      // 没有 _app 但跳过验证
       const router = createRouter({
         routesDir: testRoutesDir,
         skipAppValidation: true,
@@ -486,10 +487,10 @@ describe("Router - 新功能测试", () => {
     });
   });
 
-  describe("getFramework 和 getApiMode", () => {
-    it("应该返回框架类型", () => {
+  describe("getEngine 和 getApiMode", () => {
+    it("应该返回渲染引擎类型", () => {
       const router = createRouter({ routesDir: testRoutesDir });
-      expect(router.getFramework()).toBe("preact");
+      expect(router.getEngine()).toBe("preact");
     });
 
     it("应该返回 API 模式", () => {

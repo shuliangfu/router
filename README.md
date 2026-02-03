@@ -134,7 +134,7 @@ import { createRouter, json, notFound } from "jsr:@dreamer/router";
 // 创建文件路由
 const router = createRouter({
   routesDir: "./src/routes",
-  framework: "preact",
+  engine: "preact",
   ssr: true,
   apiMode: "restful",
   // 重定向配置
@@ -517,12 +517,12 @@ await router.navigate("/about");
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | routesDir | string | - | 路由文件目录 |
-| framework | "preact" \| "react" | "preact" | 前端框架 |
+| engine | "preact" \| "react" \| "vue2" \| "vue3" | "preact" | 渲染引擎 |
 | ssr | boolean | true | 是否启用 SSR |
 | apiMode | "restful" \| "action" | "restful" | API 路由形式 |
 | redirects | RedirectConfig[] | [] | 重定向配置 |
 | middlewares | MiddlewareFunction[] | [] | 全局中间件 |
-| skipAppValidation | boolean | false | 跳过 _app.tsx 验证 |
+| skipAppValidation | boolean | false | 跳过 _app 验证 |
 
 #### Router 方法
 

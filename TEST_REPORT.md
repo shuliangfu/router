@@ -230,7 +230,7 @@
 
 #### scan 路由扫描测试 - 6 个测试
 - ✅ 应该扫描路由文件
-- ✅ 应该在缺少 _app.tsx 时抛出错误
+- ✅ 应该在缺少 _app 时抛出错误
 - ✅ 应该扫描特殊文件
 - ✅ 应该扫描 API 路由
 - ✅ 应该扫描通配符路由
@@ -270,9 +270,9 @@
 - ✅ 应该返回客户端路由配置
 
 **skipAppValidation**
-- ✅ 应该支持跳过 _app.tsx 验证
+- ✅ 应该支持跳过 _app 验证
 
-**getFramework 和 getApiMode**
+**getEngine 和 getApiMode**
 - ✅ 应该返回框架类型
 - ✅ 应该返回 API 模式
 - ✅ 应该返回 SSR 状态
@@ -362,7 +362,7 @@
 | Router | use | ✅ |
 | Router | addRedirect | ✅ |
 | Router | getClientRoutes | ✅ |
-| Router | getFramework | ✅ |
+| Router | getEngine | ✅ |
 | Router | getApiMode | ✅ |
 | Router | isSSREnabled | ✅ |
 | Router | clearCache | ✅ |
@@ -394,7 +394,7 @@
 |----------|----------|
 | useRouter 未初始化 | ✅ |
 | 组件加载器未设置 | ✅ |
-| 缺少 _app.tsx 文件 | ✅ |
+| 缺少 _app 文件 | ✅ |
 | 移除不存在的守卫 | ✅ |
 | 移除不存在的路由 | ✅ |
 | 无路由器时调用导航 | ✅ |
