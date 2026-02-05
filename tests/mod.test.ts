@@ -55,8 +55,6 @@ describe("Router", () => {
     it("应该支持自定义配置", () => {
       const router = new Router({
         routesDir: testRoutesDir,
-        engine: "react",
-        ssr: false,
         apiMode: "action",
       });
       expect(router).toBeTruthy();
@@ -487,20 +485,10 @@ describe("Router - 新功能测试", () => {
     });
   });
 
-  describe("getEngine 和 getApiMode", () => {
-    it("应该返回渲染引擎类型", () => {
-      const router = createRouter({ routesDir: testRoutesDir });
-      expect(router.getEngine()).toBe("preact");
-    });
-
+  describe("getApiMode", () => {
     it("应该返回 API 模式", () => {
       const router = createRouter({ routesDir: testRoutesDir });
       expect(router.getApiMode()).toBe("restful");
-    });
-
-    it("应该返回 SSR 状态", () => {
-      const router = createRouter({ routesDir: testRoutesDir });
-      expect(router.isSSREnabled()).toBe(true);
     });
   });
 

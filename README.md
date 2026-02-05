@@ -130,11 +130,9 @@ import { createRouter } from "jsr:@dreamer/router/client";
 ```typescript
 import { createRouter, json, notFound } from "jsr:@dreamer/router";
 
-// 创建文件路由
+// 创建文件路由（engine、ssr 由上层框架如 dweb 的 render 配置提供）
 const router = createRouter({
   routesDir: "./src/routes",
-  engine: "preact",
-  ssr: true,
   apiMode: "restful",
   // 重定向配置
   redirects: [
@@ -403,8 +401,6 @@ await router.navigate("/about");
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | routesDir | string | - | 路由文件目录 |
-| engine | "preact" \| "react" | "preact" | 渲染引擎 |
-| ssr | boolean | true | 是否启用 SSR |
 | apiMode | "restful" \| "action" | "restful" | API 路由形式 |
 | redirects | RedirectConfig[] | [] | 重定向配置 |
 | middlewares | MiddlewareFunction[] | [] | 全局中间件 |
@@ -421,6 +417,7 @@ await router.navigate("/about");
 | addRedirect(config) | void | 添加重定向配置 |
 | getRoutes() | Route[] | 获取所有路由 |
 | getClientRoutes() | ClientRoute[] | 获取客户端路由配置 |
+| getApiMode() | "restful" \| "action" | 获取 API 模式 |
 | getSpecialFile(name) | string \| undefined | 获取特殊文件路径 |
 | loadModule(path) | Promise\<any\> | 加载模块 |
 | clearCache(path?) | void | 清除模块缓存 |

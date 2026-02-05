@@ -22,8 +22,6 @@
  *
  * const router = createRouter({
  *   routesDir: "./src/routes",
- *   engine: "preact",
- *   ssr: true,
  *   apiMode: "restful",
  *   redirects: [
  *     { source: "/old-page", destination: "/new-page", permanent: true },
@@ -96,14 +94,12 @@ export type MiddlewareFunction = (
 
 /**
  * 路由配置选项
+ *
+ * 说明：engine、ssr 由上层框架（如 dweb 的 render 配置）提供，服务端路由仅负责扫描、匹配、加载模块。
  */
 export interface RouterOptions {
   /** 路由文件目录 */
   routesDir: string;
-  /** 渲染引擎（默认：preact；缺失 _app 时提示 _app.tsx） */
-  engine?: "preact" | "react";
-  /** 是否启用 SSR（默认：true） */
-  ssr?: boolean;
   /** API 路由形式（restful 或 action，默认：restful） */
   apiMode?: "restful" | "action";
   /** 重定向配置列表 */
@@ -187,19 +183,16 @@ const MAX_MODULE_CACHE = 200;
  */
 export class Router {
   private routes: Route[] = [];
-  private options:
-    & Required<
-      Omit<
-        RouterOptions,
-        "redirects" | "middlewares" | "skipAppValidation" | "engine"
-      >
+  private options: Required<
+    Omit<
+      RouterOptions,
+      "redirects" | "middlewares" | "skipAppValidation"
     >
-    & {
-      redirects: RedirectConfig[];
-      middlewares: MiddlewareFunction[];
-      skipAppValidation: boolean;
-      engine: "preact" | "react";
-    };
+  > & {
+    redirects: RedirectConfig[];
+    middlewares: MiddlewareFunction[];
+    skipAppValidation: boolean;
+  };
   private specialFiles: Map<string, string> = new Map();
   private moduleCache: Map<string, any> = new Map();
   /** 模块缓存访问顺序（用于 LRU 淘汰） */
@@ -211,13 +204,11 @@ export class Router {
    */
   constructor(options: RouterOptions) {
     this.options = {
-      ssr: options.ssr !== false,
       apiMode: options.apiMode || "restful",
       routesDir: options.routesDir,
       redirects: options.redirects || [],
       middlewares: options.middlewares || [],
       skipAppValidation: options.skipAppValidation || false,
-      engine: options.engine ?? "preact",
     };
   }
 
@@ -494,24 +485,10 @@ export class Router {
   }
 
   /**
-   * 获取渲染引擎类型
-   */
-  getEngine(): "preact" | "react" {
-    return this.options.engine ?? "preact";
-  }
-
-  /**
    * 获取 API 模式
    */
   getApiMode(): "restful" | "action" {
     return this.options.apiMode;
-  }
-
-  /**
-   * 是否启用 SSR
-   */
-  isSSREnabled(): boolean {
-    return this.options.ssr;
   }
 
   // ==========================================================================
