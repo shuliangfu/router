@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.1] - 2026-02-07
+
+### Fixed
+
+#### Client: Scroll position restoration when navigating between pages
+
+- **Problem**: When users navigated between pages (e.g., clicking links, then pressing browser back/forward), scroll positions were not restored. The previous page always scrolled to top. Causes:
+  1. On `popstate` (browser back/forward), `saveScrollPosition()` used `getPathname()` which returns the new path after navigation — the scroll of the page being left was never saved.
+  2. When `scrollBehavior` was not provided, the default always scrolled to top and ignored any saved positions.
+- **Solution**:
+  1. Added `saveScrollPositionForPath(path)` to save scroll for a given path. At the start of `handleRouteChange`, when `previousMatch` exists (including from `popstate`), save the current scroll for `previousMatch.fullPath` before processing.
+  2. When `scrollBehavior` is not provided: if `savedPosition` exists for the target path, restore it; otherwise scroll to top.
+- **Impact**: Users switching between pages will now have their scroll positions remembered and restored when using browser back/forward. No configuration required.
+
+---
+
 ## [1.0.0] - 2026-02-06
 
 ### Added

@@ -960,6 +960,11 @@ export class ClientRouter {
 
     const previousMatch = this.currentMatch;
 
+    // popstate 时 location 已变为新路径，需先保存离开页（previousMatch）的滚动位置
+    if (previousMatch) {
+      this.saveScrollPositionForPath(previousMatch.fullPath);
+    }
+
     // 执行前置守卫
     const guardResult = await this.executeBeforeGuards(match, previousMatch);
     if (guardResult === false) {
@@ -1055,29 +1060,33 @@ export class ClientRouter {
 
   /**
    * 保存滚动位置（带 LRU 淘汰策略，防止内存泄漏）
+   * 使用当前 location 的 pathname
    */
   private saveScrollPosition(): void {
+    this.saveScrollPositionForPath(this.getPathname());
+  }
+
+  /**
+   * 为指定路径保存当前滚动位置（用于 popstate 时保存离开页的滚动）
+   * @param path 要保存的路径（如 previousMatch.fullPath）
+   */
+  private saveScrollPositionForPath(path: string): void {
     const browserGlobal = globalThis as unknown as BrowserGlobalThis;
     if (
       browserGlobal.scrollX !== undefined && browserGlobal.scrollY !== undefined
     ) {
-      const pathname = this.getPathname();
-
       // 更新 LRU 顺序
-      const existingIndex = this.scrollPositionOrder.indexOf(pathname);
+      const existingIndex = this.scrollPositionOrder.indexOf(path);
       if (existingIndex > -1) {
-        // 已存在，移动到末尾（最近使用）
         this.scrollPositionOrder.splice(existingIndex, 1);
       }
-      this.scrollPositionOrder.push(pathname);
+      this.scrollPositionOrder.push(path);
 
-      // 保存滚动位置
-      this.scrollPositions.set(pathname, {
+      this.scrollPositions.set(path, {
         left: browserGlobal.scrollX,
         top: browserGlobal.scrollY,
       });
 
-      // LRU 淘汰：超过限制时删除最旧的
       while (this.scrollPositions.size > MAX_SCROLL_POSITIONS) {
         const oldest = this.scrollPositionOrder.shift();
         if (oldest) {
@@ -1118,8 +1127,16 @@ export class ClientRouter {
       }
     }
 
-    // 默认滚动到顶部
-    browserGlobal.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    // 默认：有保存的位置则恢复，否则滚动到顶部
+    if (savedPosition) {
+      browserGlobal.scrollTo({
+        top: savedPosition.top,
+        left: savedPosition.left || 0,
+        behavior: savedPosition.behavior || "auto",
+      });
+    } else {
+      browserGlobal.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
   }
 
   /**

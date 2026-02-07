@@ -611,6 +611,14 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ---
 
+## 📋 变更日志
+
+详见 [CHANGELOG-zh.md](./CHANGELOG-zh.md)。
+
+**最新 (v1.0.1)**：修复页面切换时滚动位置恢复。浏览器前进/后退现在会恢复之前的滚动位置。
+
+---
+
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！

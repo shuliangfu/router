@@ -611,6 +611,14 @@ These links are not intercepted:
 
 ---
 
+## 📋 Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for full history.
+
+**Latest (v1.0.1)**: Fixed scroll position restoration when navigating between pages. Browser back/forward now restores the previous scroll position.
+
+---
+
 ## 🤝 Contributing
 
 Issues and Pull Requests are welcome!
