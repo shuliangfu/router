@@ -157,6 +157,18 @@ describe("Router", () => {
       }
     });
 
+    it("route.file 应统一使用正斜杠（Windows 兼容）", async () => {
+      await setupTestRoutes();
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const routes = router.getRoutes();
+      for (const r of routes) {
+        expect(r.file).not.toContain("\\");
+        expect(r.file).toMatch(/^[a-zA-Z0-9\[\]\/_.-]+\.(tsx?|ts)$/);
+      }
+    });
+
     it("应该扫描可选参数路由", async () => {
       await setupTestRoutes();
       await mkdir(join(testRoutesDir, "blog"), { recursive: true });

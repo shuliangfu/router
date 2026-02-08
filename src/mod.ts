@@ -693,6 +693,13 @@ export class Router {
   }
 
   /**
+   * 规范化 route.file 为统一正斜杠（Windows 兼容：确保 hydrationData.component 与客户端 ROUTE_LOADERS 一致）
+   */
+  private normalizeRouteFile(path: string): string {
+    return path.replace(/\\/g, "/").trim();
+  }
+
+  /**
    * 解析路由路径
    */
   private parseRoutePath(
@@ -707,14 +714,19 @@ export class Router {
       const path = relativePath
         ? `/${relativePath.replace(/\/index$/, "")}`
         : "/";
+      const file = this.normalizeRouteFile(
+        relativePath ? `${relativePath}/${fileName}` : fileName,
+      );
       return {
         path: path || "/",
-        file: relativePath ? `${relativePath}/${fileName}` : fileName,
+        file,
         type: "static",
       };
     }
 
-    const filePath = relativePath ? `${relativePath}/${fileName}` : fileName;
+    const filePath = this.normalizeRouteFile(
+      relativePath ? `${relativePath}/${fileName}` : fileName,
+    );
 
     let routePath = relativePath ? `/${relativePath}` : "";
     routePath = `${routePath}/${nameWithoutExt}`;
