@@ -6,6 +6,14 @@
 
 ---
 
+## [1.0.2] - 2026-02-08
+
+### 修复
+
+- **Windows 兼容**：`route.file` 统一使用正斜杠。新增 `normalizeRouteFile()` 在 `parseRoutePath` 中将反斜杠转为正斜杠，确保 Windows 下路径格式一致。
+
+---
+
 ## [1.0.1] - 2026-02-07
 
 ### 修复

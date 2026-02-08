@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.2] - 2026-02-08
+
+### Fixed
+
+- **Windows compatibility**: Normalize `route.file` to use forward slashes. Added `normalizeRouteFile()` to convert backslashes to forward slashes in `parseRoutePath`, ensuring consistent path format on Windows.
+
+---
+
 ## [1.0.1] - 2026-02-07
 
 ### Fixed

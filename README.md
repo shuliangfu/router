@@ -615,7 +615,7 @@ These links are not intercepted:
 
 See [CHANGELOG.md](./CHANGELOG.md) for full history.
 
-**Latest (v1.0.1)**: Fixed scroll position restoration when navigating between pages. Browser back/forward now restores the previous scroll position.
+**Latest (v1.0.2)**: Fixed Windows compatibility. `route.file` now uses forward slashes consistently via `normalizeRouteFile()`.
 
 ---
 

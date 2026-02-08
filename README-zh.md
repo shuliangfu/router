@@ -615,7 +615,7 @@ router.start(); // 开始拦截 <a> 标签点击
 
 详见 [CHANGELOG-zh.md](./CHANGELOG-zh.md)。
 
-**最新 (v1.0.1)**：修复页面切换时滚动位置恢复。浏览器前进/后退现在会恢复之前的滚动位置。
+**最新 (v1.0.2)**：修复 Windows 兼容性。`route.file` 现通过 `normalizeRouteFile()` 统一使用正斜杠。
 
 ---
 
