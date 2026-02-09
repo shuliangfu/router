@@ -631,11 +631,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.5**（2026-02-09）
+**v1.0.6**（2026-02-09）
 
-- **修复**：服务端路由 (processFile) - 路径规范化，解决 Windows 下
-  specialFiles、API 检测、route.path 异常
-- **变更**：提升 @dreamer/test 至 ^1.0.2
+- **新增**：`debug?: boolean` 选项，支持 RouterOptions（服务端）和
+  ClientRouterOptions（客户端）。传 `debug: true` 时输出路由匹配、模块加载、
+  导航等详细调试日志，便于诊断 Windows 路径问题及组件加载失败。
 
 详见 [CHANGELOG-zh.md](./CHANGELOG-zh.md)。
 

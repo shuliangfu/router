@@ -108,6 +108,8 @@ export interface RouterOptions {
   middlewares?: MiddlewareFunction[];
   /** 是否跳过 _app 验证（默认：false） */
   skipAppValidation?: boolean;
+  /** 是否启用详细调试日志（默认：false） */
+  debug?: boolean;
 }
 
 /**
@@ -187,13 +189,14 @@ export class Router {
     & Required<
       Omit<
         RouterOptions,
-        "redirects" | "middlewares" | "skipAppValidation"
+        "redirects" | "middlewares" | "skipAppValidation" | "debug"
       >
     >
     & {
       redirects: RedirectConfig[];
       middlewares: MiddlewareFunction[];
       skipAppValidation: boolean;
+      debug: boolean;
     };
   private specialFiles: Map<string, string> = new Map();
   private moduleCache: Map<string, any> = new Map();
@@ -211,7 +214,17 @@ export class Router {
       redirects: options.redirects || [],
       middlewares: options.middlewares || [],
       skipAppValidation: options.skipAppValidation || false,
+      debug: options.debug ?? false,
     };
+  }
+
+  /**
+   * 调试日志：仅当 debug 为 true 时输出
+   */
+  private debugLog(prefix: string, ...args: unknown[]): void {
+    if (this.options.debug) {
+      console.log(`[@dreamer/router:${prefix}]`, ...args);
+    }
   }
 
   /**
@@ -265,6 +278,8 @@ export class Router {
     pathname: string,
     options?: { method?: string; request?: Request },
   ): Promise<RouteMatch | null> {
+    this.debugLog("match", "pathname:", pathname, "method:", options?.method);
+
     // 解析查询参数
     const url = new URL(pathname, "http://localhost");
     const query: Record<string, string> = {};
@@ -314,6 +329,12 @@ export class Router {
 
       const match = this.matchRoute(route, cleanPath);
       if (match) {
+        this.debugLog("match", "matched", {
+          path: route.path,
+          file: route.file,
+          fullPath: route.fullPath,
+          params: match.params,
+        });
         return {
           route,
           params: match.params,
@@ -326,6 +347,7 @@ export class Router {
       }
     }
 
+    this.debugLog("match", "no match for pathname:", pathname, "routes count:", this.routes.length);
     return null;
   }
 
@@ -439,6 +461,8 @@ export class Router {
    * @returns 模块
    */
   async loadModule(filePath: string): Promise<any> {
+    this.debugLog("loadModule", "filePath:", filePath, "cached:", this.moduleCache.has(filePath));
+
     // 检查缓存
     if (this.moduleCache.has(filePath)) {
       // 更新 LRU 顺序

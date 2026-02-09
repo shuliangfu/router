@@ -633,11 +633,12 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-**v1.0.5** (2026-02-09)
+**v1.0.6** (2026-02-09)
 
-- **Fixed**: Server routing (processFile) - normalize path for Windows
-  compatibility in specialFiles, API detection, route.path
-- **Changed**: Bump @dreamer/test to ^1.0.2
+- **Added**: `debug?: boolean` option for RouterOptions (server) and
+  ClientRouterOptions (client). When `debug: true`, emits detailed logs for route
+  matching, loadModule/loadComponent, and navigation to help diagnose Windows
+  path issues and component loading failures.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full history.
 

@@ -172,6 +172,8 @@ export interface ClientRouterOptions {
   mode?: RouterMode;
   /** 滚动行为处理函数 */
   scrollBehavior?: ScrollBehaviorHandler;
+  /** 是否启用详细调试日志（默认：false） */
+  debug?: boolean;
 }
 
 /**
@@ -279,6 +281,7 @@ export class ClientRouter {
   private options: Required<Pick<ClientRouterOptions, "engine" | "mode">> & {
     basePath: string;
     scrollBehavior?: ScrollBehaviorHandler;
+    debug: boolean;
   };
   private currentMatch: ClientRouteMatch | null = null;
   private routeChangeCallbacks: RouteChangeCallback[] = [];
@@ -310,6 +313,7 @@ export class ClientRouter {
       basePath: options.basePath || "",
       mode: options.mode || "history",
       scrollBehavior: options.scrollBehavior,
+      debug: options.debug ?? false,
     };
 
     // 监听浏览器历史记录变化
@@ -317,6 +321,15 @@ export class ClientRouter {
 
     // 设置为全局路由器
     setGlobalRouter(this);
+  }
+
+  /**
+   * 调试日志：仅当 debug 为 true 时输出
+   */
+  private debugLog(prefix: string, ...args: unknown[]): void {
+    if (this.options.debug) {
+      console.log(`[@dreamer/router/client:${prefix}]`, ...args);
+    }
   }
 
   // ==========================================================================
@@ -347,6 +360,8 @@ export class ClientRouter {
     path: string,
     options: { replace?: boolean; state?: any } = {},
   ): Promise<void> {
+    this.debugLog("navigate", "path:", path, "replace:", options.replace);
+
     const browserGlobal = globalThis as unknown as BrowserGlobalThis;
     if (typeof globalThis === "undefined" || !browserGlobal.history) {
       throw new Error("浏览器环境不支持 history API");
@@ -451,6 +466,8 @@ export class ClientRouter {
    * @returns 路由匹配结果或 null
    */
   match(pathname: string): ClientRouteMatch | null {
+    this.debugLog("match", "pathname:", pathname);
+
     // 处理 hash 模式
     let pathToMatch = pathname;
     if (this.options.mode === "hash" && pathname.startsWith("#")) {
@@ -485,6 +502,12 @@ export class ClientRouter {
           return this.match(route.redirect);
         }
 
+        this.debugLog("match", "matched", {
+          path: route.path,
+          component: route.component,
+          params: matchResult.params,
+        });
+
         return {
           route,
           params: matchResult.params,
@@ -497,6 +520,7 @@ export class ClientRouter {
       }
     }
 
+    this.debugLog("match", "no match for pathname:", pathname, "routes count:", this.routes.length);
     return null;
   }
 
@@ -956,6 +980,8 @@ export class ClientRouter {
    */
   private async handleRouteChange(): Promise<void> {
     const pathname = this.getPathname();
+    this.debugLog("handleRouteChange", "pathname:", pathname);
+
     const match = this.match(pathname);
 
     const previousMatch = this.currentMatch;
@@ -1234,6 +1260,8 @@ export class ClientRouter {
    * 加载组件（带 LRU 淘汰策略，防止内存泄漏）
    */
   private loadComponent(component: string): Promise<unknown> {
+    this.debugLog("loadComponent", "component:", component, "cached:", this.componentCache.has(component));
+
     // 检查缓存
     if (this.componentCache.has(component)) {
       // 更新 LRU 顺序

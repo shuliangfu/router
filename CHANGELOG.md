@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.6] - 2026-02-09
+
+### Added
+
+- **Debug option**: Add `debug?: boolean` to `RouterOptions` (server) and
+  `ClientRouterOptions` (client). When `debug: true`, detailed logs are emitted
+  for route matching, loadModule/loadComponent, and navigation. Helps diagnose
+  Windows path issues and component loading failures.
+
+---
+
 ## [1.0.5] - 2026-02-09
 
 ### Fixed
