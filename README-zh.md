@@ -613,9 +613,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-详见 [CHANGELOG-zh.md](./CHANGELOG-zh.md)。
+**v1.0.3**（2026-02-08）
 
-**最新 (v1.0.2)**：修复 Windows 兼容性。`route.file` 现通过 `normalizeRouteFile()` 统一使用正斜杠。
+- **修复**：中间件加载与路由扫描使用 `join()` 和 `dirname()` 构建路径（Windows 兼容）
+
+详见 [CHANGELOG-zh.md](./CHANGELOG-zh.md)。
 
 ---
 

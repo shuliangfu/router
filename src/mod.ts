@@ -34,7 +34,7 @@
  */
 
 // 导入 runtime-adapter 提供的文件系统 API（兼容 Deno 和 Bun）
-import { cwd, readdir, stat } from "@dreamer/runtime-adapter";
+import { cwd, dirname, join, readdir, stat } from "@dreamer/runtime-adapter";
 
 // ============================================================================
 // 类型定义
@@ -575,12 +575,9 @@ export class Router {
 
     const middlewares: MiddlewareFunction[] = [];
 
-    // 查找路由目录下的 _middleware.ts
-    const routeDir = route.fullPath.substring(
-      0,
-      route.fullPath.lastIndexOf("/"),
-    );
-    const middlewarePath = `${routeDir}/_middleware.ts`;
+    // 查找路由目录下的 _middleware.ts（使用 dirname/join 确保 Windows 兼容）
+    const routeDir = dirname(route.fullPath);
+    const middlewarePath = join(routeDir, "_middleware.ts");
 
     try {
       const module = await this.loadModule(middlewarePath);
@@ -608,13 +605,13 @@ export class Router {
       const entries = await readdir(dirPath);
 
       for (const entry of entries) {
-        const fullPath = `${dirPath}/${entry.name}`;
+        const fullPath = join(dirPath, entry.name);
         const fileStat = await stat(fullPath);
 
         if (fileStat.isDirectory) {
           await this.scanDirectory(
             fullPath,
-            relativePath ? `${relativePath}/${entry.name}` : entry.name,
+            relativePath ? join(relativePath, entry.name) : entry.name,
           );
         } else if (fileStat.isFile) {
           this.processFile(fullPath, relativePath, entry.name);
@@ -641,7 +638,7 @@ export class Router {
       if (specialType) {
         // 处理嵌套的特殊文件
         const key = relativePath
-          ? `${relativePath}/${specialType}`
+          ? join(relativePath, specialType)
           : specialType;
         this.specialFiles.set(key, fullPath);
         // 根目录的特殊文件也用简单 key 保存

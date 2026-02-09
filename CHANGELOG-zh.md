@@ -6,6 +6,14 @@
 
 ---
 
+## [1.0.3] - 2026-02-08
+
+### 修复
+
+- **Windows 兼容**：`loadRouteMiddlewares`、`scanDirectory`、`processFile` 中用 `join()` 和 `dirname()` 替代字符串拼接，确保 Windows 下路径正确处理。
+
+---
+
 ## [1.0.2] - 2026-02-08
 
 ### 修复

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.3] - 2026-02-08
+
+### Fixed
+
+- **Windows compatibility**: Replace string concatenation with `join()` and `dirname()` for path construction in `loadRouteMiddlewares`, `scanDirectory`, and `processFile`. Ensures cross-platform path handling on Windows.
+
+---
+
 ## [1.0.2] - 2026-02-08
 
 ### Fixed

@@ -613,9 +613,11 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-See [CHANGELOG.md](./CHANGELOG.md) for full history.
+**v1.0.3** (2026-02-08)
 
-**Latest (v1.0.2)**: Fixed Windows compatibility. `route.file` now uses forward slashes consistently via `normalizeRouteFile()`.
+- **Fixed**: Use `join()` and `dirname()` for path construction in middleware loading and route scanning (Windows compatibility)
+
+See [CHANGELOG.md](./CHANGELOG.md) for full history.
 
 ---
 
