@@ -613,9 +613,9 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-**v1.0.3** (2026-02-08)
+**v1.0.4** (2026-02-08)
 
-- **Fixed**: Use `join()` and `dirname()` for path construction in middleware loading and route scanning (Windows compatibility)
+- **Changed**: Bump @dreamer/runtime-adapter and @dreamer/test to latest compatible versions
 
 See [CHANGELOG.md](./CHANGELOG.md) for full history.
 

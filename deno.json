@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/router",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
@@ -38,8 +38,8 @@
     }
   },
   "imports": {
-    "@dreamer/test": "jsr:@dreamer/test@^1.0.0",
-    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.0",
+    "@dreamer/test": "jsr:@dreamer/test@^1.0.1",
+    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.4",
     "esbuild": "npm:esbuild@0.24.0"
   },
   "nodeModulesDir": "auto"

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.4] - 2026-02-08
+
+### Changed
+
+- **Dependencies**: Bump @dreamer/runtime-adapter and @dreamer/test to ensure latest compatible versions are used.
+
+---
+
 ## [1.0.3] - 2026-02-08
 
 ### Fixed
