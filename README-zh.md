@@ -1,6 +1,7 @@
 # @dreamer/router
 
-> 一个兼容 Deno 和 Bun 的文件路由系统，提供统一的文件路由接口，支持服务端路由匹配和客户端路由导航
+> 一个兼容 Deno 和 Bun
+> 的文件路由系统，提供统一的文件路由接口，支持服务端路由匹配和客户端路由导航
 
 [English](./README.md) | 中文 (Chinese)
 
@@ -13,6 +14,7 @@
 ## 🎯 功能
 
 文件路由系统，提供统一的文件路由抽象层：
+
 - **服务端**：路由文件扫描、SSR 路由匹配、API 路由处理、中间件链、重定向
 - **客户端**：浏览器路由导航、路由守卫、历史操作、滚动行为、预取、Link 组件
 
@@ -43,12 +45,12 @@ import { createRouter } from "jsr:@dreamer/router/client";
 
 ## 🌍 环境兼容性
 
-| 环境 | 支持 | 说明 |
-|------|------|------|
-| Deno | ✅ | 2.6+ |
-| Bun | ✅ | 1.3.5+ |
-| 服务端 | ✅ | SSR 路由匹配、API 路由、中间件 |
-| 浏览器 | ✅ | 客户端路由导航（/client） |
+| 环境   | 支持 | 说明                           |
+| ------ | ---- | ------------------------------ |
+| Deno   | ✅   | 2.6+                           |
+| Bun    | ✅   | 1.3.5+                         |
+| 服务端 | ✅   | SSR 路由匹配、API 路由、中间件 |
+| 浏览器 | ✅   | 客户端路由导航（/client）      |
 
 ---
 
@@ -162,7 +164,10 @@ const response = await router.handleRequest(request, async (match, context) => {
 
   // 处理重定向
   if (match.redirect) {
-    return Response.redirect(match.redirect.destination, match.redirect.statusCode);
+    return Response.redirect(
+      match.redirect.destination,
+      match.redirect.statusCode,
+    );
   }
 
   // 加载并渲染页面
@@ -176,11 +181,11 @@ const response = await router.handleRequest(request, async (match, context) => {
 
 ```typescript
 import {
-  createRouter,
-  useRouter,
-  useRoute,
-  useParams,
   createLinkComponent,
+  createRouter,
+  useParams,
+  useRoute,
+  useRouter,
 } from "jsr:@dreamer/router/client";
 
 // 创建客户端路由器
@@ -242,7 +247,10 @@ router.go(-2);
 
 ```typescript
 import { h } from "preact";
-import { createLinkComponent, createNavLinkComponent } from "jsr:@dreamer/router/client";
+import {
+  createLinkComponent,
+  createNavLinkComponent,
+} from "jsr:@dreamer/router/client";
 
 // 创建 Link 组件
 const Link = createLinkComponent(h);
@@ -281,7 +289,13 @@ function Navigation() {
 ### Hooks 使用
 
 ```typescript
-import { useRouter, useRoute, useParams, useQuery, useMeta } from "jsr:@dreamer/router/client";
+import {
+  useMeta,
+  useParams,
+  useQuery,
+  useRoute,
+  useRouter,
+} from "jsr:@dreamer/router/client";
 
 function UserPage() {
   const router = useRouter();
@@ -338,7 +352,9 @@ const logMiddleware: MiddlewareFunction = async (context, next) => {
   const start = Date.now();
   const response = await next();
   const duration = Date.now() - start;
-  console.log(`${context.request.method} ${context.request.url} - ${duration}ms`);
+  console.log(
+    `${context.request.method} ${context.request.url} - ${duration}ms`,
+  );
   return response;
 };
 
@@ -400,37 +416,37 @@ await router.navigate("/about");
 
 创建服务端路由器实例。
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| routesDir | string | - | 路由文件目录 |
-| apiMode | "restful" \| "action" | "restful" | API 路由形式 |
-| redirects | RedirectConfig[] | [] | 重定向配置 |
-| middlewares | MiddlewareFunction[] | [] | 全局中间件 |
-| skipAppValidation | boolean | false | 跳过 _app 验证 |
+| 参数              | 类型                  | 默认值    | 说明           |
+| ----------------- | --------------------- | --------- | -------------- |
+| routesDir         | string                | -         | 路由文件目录   |
+| apiMode           | "restful" \| "action" | "restful" | API 路由形式   |
+| redirects         | RedirectConfig[]      | []        | 重定向配置     |
+| middlewares       | MiddlewareFunction[]  | []        | 全局中间件     |
+| skipAppValidation | boolean               | false     | 跳过 _app 验证 |
 
 #### Router 方法
 
-| 方法 | 返回值 | 说明 |
-|------|--------|------|
-| scan() | Promise\<void\> | 扫描路由文件 |
-| match(pathname, options?) | Promise\<RouteMatch \| null\> | 匹配路由 |
-| handleRequest(request, handler) | Promise\<Response\> | 处理请求（带中间件） |
-| use(middleware) | void | 添加全局中间件 |
-| addRedirect(config) | void | 添加重定向配置 |
-| getRoutes() | Route[] | 获取所有路由 |
-| getClientRoutes() | ClientRoute[] | 获取客户端路由配置 |
-| getApiMode() | "restful" \| "action" | 获取 API 模式 |
-| getSpecialFile(name) | string \| undefined | 获取特殊文件路径 |
-| loadModule(path) | Promise\<any\> | 加载模块 |
-| clearCache(path?) | void | 清除模块缓存 |
+| 方法                            | 返回值                        | 说明                 |
+| ------------------------------- | ----------------------------- | -------------------- |
+| scan()                          | Promise\<void\>               | 扫描路由文件         |
+| match(pathname, options?)       | Promise\<RouteMatch \| null\> | 匹配路由             |
+| handleRequest(request, handler) | Promise\<Response\>           | 处理请求（带中间件） |
+| use(middleware)                 | void                          | 添加全局中间件       |
+| addRedirect(config)             | void                          | 添加重定向配置       |
+| getRoutes()                     | Route[]                       | 获取所有路由         |
+| getClientRoutes()               | ClientRoute[]                 | 获取客户端路由配置   |
+| getApiMode()                    | "restful" \| "action"         | 获取 API 模式        |
+| getSpecialFile(name)            | string \| undefined           | 获取特殊文件路径     |
+| loadModule(path)                | Promise\<any\>                | 加载模块             |
+| clearCache(path?)               | void                          | 清除模块缓存         |
 
 #### 辅助函数
 
-| 函数 | 说明 |
-|------|------|
-| json(data, status?) | 创建 JSON 响应 |
-| html(content, status?) | 创建 HTML 响应 |
-| notFound(message?) | 创建 404 响应 |
+| 函数                                             | 说明           |
+| ------------------------------------------------ | -------------- |
+| json(data, status?)                              | 创建 JSON 响应 |
+| html(content, status?)                           | 创建 HTML 响应 |
+| notFound(message?)                               | 创建 404 响应  |
 | createRedirectResponse(destination, statusCode?) | 创建重定向响应 |
 
 ### 客户端 API（@dreamer/router/client）
@@ -439,80 +455,80 @@ await router.navigate("/about");
 
 创建客户端路由器实例。
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| routes | ClientRoute[] | - | 路由配置列表 |
-| engine | "preact" \| "react" | "preact" | 渲染引擎 |
-| basePath | string | "" | 基础路径 |
-| mode | "history" \| "hash" | "history" | 路由模式 |
-| scrollBehavior | ScrollBehaviorHandler | - | 滚动行为函数 |
+| 参数           | 类型                  | 默认值    | 说明         |
+| -------------- | --------------------- | --------- | ------------ |
+| routes         | ClientRoute[]         | -         | 路由配置列表 |
+| engine         | "preact" \| "react"   | "preact"  | 渲染引擎     |
+| basePath       | string                | ""        | 基础路径     |
+| mode           | "history" \| "hash"   | "history" | 路由模式     |
+| scrollBehavior | ScrollBehaviorHandler | -         | 滚动行为函数 |
 
 #### ClientRouter 方法
 
-| 方法 | 返回值 | 说明 |
-|------|--------|------|
-| start() | void | 启动路由器，开始拦截链接 |
-| navigate(path, options?) | Promise\<void\> | 导航到指定路径 |
-| replace(path, state?) | Promise\<void\> | 替换当前历史记录并导航 |
-| back() | void | 后退一步 |
-| forward() | void | 前进一步 |
-| go(delta) | void | 前进/后退指定步数 |
-| match(pathname) | ClientRouteMatch \| null | 匹配路由 |
-| getCurrentRoute() | ClientRouteMatch \| null | 获取当前路由 |
-| prefetch(path) | Promise\<unknown \| null\> | 预取路由组件 |
-| isActive(path, exact?) | boolean | 检查路径是否匹配当前路由 |
-| resolvePath(path) | string | 解析路径（添加基础路径） |
-| onRouteChange(callback) | () => void | 监听路由变化 |
-| onNavigationState(callback) | () => void | 监听导航状态变化 |
-| beforeRoute(guard) | () => void | 添加前置守卫 |
-| afterRoute(guard) | () => void | 添加后置守卫 |
-| getRoutes() | ClientRoute[] | 获取所有路由 |
-| getEngine() | string | 获取渲染引擎 |
-| getMode() | RouterMode | 获取路由模式 |
-| getBasePath() | string | 获取基础路径 |
-| getNavigationState() | NavigationState | 获取导航状态 |
-| addRoute(route) | void | 动态添加路由 |
-| removeRoute(path) | boolean | 动态移除路由 |
-| setComponentLoader(loader) | void | 设置组件加载器 |
-| clearCache(component?) | void | 清除组件缓存 |
-| destroy() | void | 销毁路由器 |
+| 方法                        | 返回值                     | 说明                     |
+| --------------------------- | -------------------------- | ------------------------ |
+| start()                     | void                       | 启动路由器，开始拦截链接 |
+| navigate(path, options?)    | Promise\<void\>            | 导航到指定路径           |
+| replace(path, state?)       | Promise\<void\>            | 替换当前历史记录并导航   |
+| back()                      | void                       | 后退一步                 |
+| forward()                   | void                       | 前进一步                 |
+| go(delta)                   | void                       | 前进/后退指定步数        |
+| match(pathname)             | ClientRouteMatch \| null   | 匹配路由                 |
+| getCurrentRoute()           | ClientRouteMatch \| null   | 获取当前路由             |
+| prefetch(path)              | Promise\<unknown \| null\> | 预取路由组件             |
+| isActive(path, exact?)      | boolean                    | 检查路径是否匹配当前路由 |
+| resolvePath(path)           | string                     | 解析路径（添加基础路径） |
+| onRouteChange(callback)     | () => void                 | 监听路由变化             |
+| onNavigationState(callback) | () => void                 | 监听导航状态变化         |
+| beforeRoute(guard)          | () => void                 | 添加前置守卫             |
+| afterRoute(guard)           | () => void                 | 添加后置守卫             |
+| getRoutes()                 | ClientRoute[]              | 获取所有路由             |
+| getEngine()                 | string                     | 获取渲染引擎             |
+| getMode()                   | RouterMode                 | 获取路由模式             |
+| getBasePath()               | string                     | 获取基础路径             |
+| getNavigationState()        | NavigationState            | 获取导航状态             |
+| addRoute(route)             | void                       | 动态添加路由             |
+| removeRoute(path)           | boolean                    | 动态移除路由             |
+| setComponentLoader(loader)  | void                       | 设置组件加载器           |
+| clearCache(component?)      | void                       | 清除组件缓存             |
+| destroy()                   | void                       | 销毁路由器               |
 
 #### Hooks
 
-| Hook | 返回值 | 说明 |
-|------|--------|------|
-| useRouter() | ClientRouter | 获取路由器实例 |
-| useRoute() | ClientRouteMatch \| null | 获取当前路由 |
-| useParams() | Record\<string, string\> | 获取路由参数 |
-| useQuery() | Record\<string, string\> | 获取查询参数 |
-| useMeta() | RouteMeta | 获取路由元数据 |
-| useNavigationState() | NavigationState | 获取导航状态 |
-| useIsActive(path, exact?) | boolean | 检查路径是否活跃 |
+| Hook                      | 返回值                   | 说明             |
+| ------------------------- | ------------------------ | ---------------- |
+| useRouter()               | ClientRouter             | 获取路由器实例   |
+| useRoute()                | ClientRouteMatch \| null | 获取当前路由     |
+| useParams()               | Record\<string, string\> | 获取路由参数     |
+| useQuery()                | Record\<string, string\> | 获取查询参数     |
+| useMeta()                 | RouteMeta                | 获取路由元数据   |
+| useNavigationState()      | NavigationState          | 获取导航状态     |
+| useIsActive(path, exact?) | boolean                  | 检查路径是否活跃 |
 
 #### 组件工厂函数
 
-| 函数 | 说明 |
-|------|------|
-| createLinkComponent(h) | 创建 Link 组件 |
-| createNavLinkComponent(h) | 创建 NavLink 组件 |
-| createLinkProps(props) | 创建 Link 属性对象 |
+| 函数                      | 说明                  |
+| ------------------------- | --------------------- |
+| createLinkComponent(h)    | 创建 Link 组件        |
+| createNavLinkComponent(h) | 创建 NavLink 组件     |
+| createLinkProps(props)    | 创建 Link 属性对象    |
 | createNavLinkProps(props) | 创建 NavLink 属性对象 |
 
 #### 类型定义
 
 ```typescript
 interface ClientRoute {
-  path: string;           // 路由路径
-  component: string;      // 组件标识
+  path: string; // 路由路径
+  component: string; // 组件标识
   type?: "static" | "dynamic" | "wildcard" | "optional";
-  meta?: RouteMeta;       // 路由元数据
-  redirect?: string;      // 重定向目标
+  meta?: RouteMeta; // 路由元数据
+  redirect?: string; // 重定向目标
 }
 
 interface RouteMeta {
-  title?: string;         // 页面标题
+  title?: string; // 页面标题
   requiresAuth?: boolean; // 是否需要认证
-  keepAlive?: boolean;    // 是否缓存组件
+  keepAlive?: boolean; // 是否缓存组件
   [key: string]: unknown; // 自定义数据
 }
 
@@ -534,29 +550,29 @@ type RouterMode = "history" | "hash";
 
 ## 📊 测试报告
 
-| 指标 | 数值 |
-|------|------|
-| 总测试数 | 130 |
-| 通过 | 130 |
-| 失败 | 0 |
-| 通过率 | 100% |
+| 指标     | 数值       |
+| -------- | ---------- |
+| 总测试数 | 130        |
+| 通过     | 130        |
+| 失败     | 0          |
+| 通过率   | 100%       |
 | 测试时间 | 2026-02-03 |
-| 执行时间 | ~31s |
+| 执行时间 | ~31s       |
 
 ### 运行时兼容性
 
 | 运行时 | 测试数 | 通过 | 状态 |
-|--------|--------|------|------|
-| Deno | 130 | 130 | ✅ |
-| Bun | 130 | 130 | ✅ |
+| ------ | ------ | ---- | ---- |
+| Deno   | 130    | 130  | ✅   |
+| Bun    | 130    | 130  | ✅   |
 
 ### 测试文件覆盖
 
-| 测试文件 | 测试数量 | 覆盖内容 |
-|----------|----------|----------|
-| client-browser.test.ts | 27 | 浏览器测试：导航、守卫、链接拦截、历史操作 |
-| client.test.ts | 69 | 客户端单元测试：路由匹配、元数据、basePath、hash 模式 |
-| mod.test.ts | 34 | 服务端测试：扫描、匹配、重定向、中间件 |
+| 测试文件               | 测试数量 | 覆盖内容                                              |
+| ---------------------- | -------- | ----------------------------------------------------- |
+| client-browser.test.ts | 27       | 浏览器测试：导航、守卫、链接拦截、历史操作            |
+| client.test.ts         | 69       | 客户端单元测试：路由匹配、元数据、basePath、hash 模式 |
+| mod.test.ts            | 34       | 服务端测试：扫描、匹配、重定向、中间件                |
 
 详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
@@ -579,6 +595,7 @@ const url = new URL(window.location.href);
 ### API 路由形式选择
 
 API 路由必须通过配置选择使用哪种形式，**不能混合使用**：
+
 - `apiMode: "restful"` - RESTful 形式（GET、POST、PUT、DELETE）
 - `apiMode: "action"` - 操作方法形式（login、register）
 
@@ -603,6 +620,7 @@ router.start(); // 开始拦截 <a> 标签点击
 ### 不拦截的链接
 
 以下链接不会被客户端路由器拦截：
+
 - 带 `target="_blank"` 属性
 - 带 `download` 属性
 - 带 `data-native` 属性
@@ -613,9 +631,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.4**（2026-02-08）
+**v1.0.5**（2026-02-09）
 
-- **变更**：提升 @dreamer/runtime-adapter、@dreamer/test 至最新兼容版本
+- **修复**：服务端路由 (processFile) - 路径规范化，解决 Windows 下
+  specialFiles、API 检测、route.path 异常
+- **变更**：提升 @dreamer/test 至 ^1.0.2
 
 详见 [CHANGELOG-zh.md](./CHANGELOG-zh.md)。
 

@@ -183,16 +183,18 @@ const MAX_MODULE_CACHE = 200;
  */
 export class Router {
   private routes: Route[] = [];
-  private options: Required<
-    Omit<
-      RouterOptions,
-      "redirects" | "middlewares" | "skipAppValidation"
+  private options:
+    & Required<
+      Omit<
+        RouterOptions,
+        "redirects" | "middlewares" | "skipAppValidation"
+      >
     >
-  > & {
-    redirects: RedirectConfig[];
-    middlewares: MiddlewareFunction[];
-    skipAppValidation: boolean;
-  };
+    & {
+      redirects: RedirectConfig[];
+      middlewares: MiddlewareFunction[];
+      skipAppValidation: boolean;
+    };
   private specialFiles: Map<string, string> = new Map();
   private moduleCache: Map<string, any> = new Map();
   /** 模块缓存访问顺序（用于 LRU 淘汰） */
@@ -632,17 +634,20 @@ export class Router {
     relativePath: string,
     fileName: string,
   ): void {
+    // 规范化路径（Windows 兼容：join 可能产生反斜杠，统一为正斜杠）
+    const normalizedPath = this.normalizeRouteFile(relativePath);
+
     // 检查是否为特殊文件
     if (fileName.startsWith("_")) {
       const specialType = this.getSpecialFileType(fileName);
       if (specialType) {
-        // 处理嵌套的特殊文件
-        const key = relativePath
-          ? join(relativePath, specialType)
+        // 处理嵌套的特殊文件（key 使用正斜杠，确保 Windows 下查找一致）
+        const key = normalizedPath
+          ? `${normalizedPath}/${specialType}`
           : specialType;
         this.specialFiles.set(key, fullPath);
         // 根目录的特殊文件也用简单 key 保存
-        if (!relativePath) {
+        if (!normalizedPath) {
           this.specialFiles.set(specialType, fullPath);
         }
       }
@@ -655,12 +660,12 @@ export class Router {
       return;
     }
 
-    // 判断是否为 API 路由
-    const isApi = relativePath.startsWith("api/") ||
-      relativePath.split("/").includes("api");
+    // 判断是否为 API 路由（使用规范化后的路径，Windows 下 relativePath 可能含反斜杠）
+    const isApi = normalizedPath.startsWith("api/") ||
+      normalizedPath.split("/").includes("api");
 
-    // 解析路由路径和类型
-    const routeInfo = this.parseRoutePath(relativePath, fileName, isApi);
+    // 解析路由路径和类型（传入规范化路径，确保 route.path 正确）
+    const routeInfo = this.parseRoutePath(normalizedPath, fileName, isApi);
 
     // 创建路由对象
     const route: Route = {

@@ -259,7 +259,13 @@ export function createNavLinkProps(props: NavLinkProps): NavLinkAttributes {
   } = props;
 
   // 获取基础 Link 属性
-  const linkAttrs = createLinkProps({ to, class: className, className: reactClassName, style, ...rest });
+  const linkAttrs = createLinkProps({
+    to,
+    class: className,
+    className: reactClassName,
+    style,
+    ...rest,
+  });
 
   const router = getGlobalRouter();
 

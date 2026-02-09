@@ -13,7 +13,8 @@
 
 ## 功能
 
-客户端路由导航库，提供统一的客户端路由抽象层，支持浏览器路由导航和历史记录管理。使用浏览器原生 API（`history.pushState`、`popstate` 事件等）实现，不包含任何服务端依赖。
+客户端路由导航库，提供统一的客户端路由抽象层，支持浏览器路由导航和历史记录管理。使用浏览器原生
+API（`history.pushState`、`popstate` 事件等）实现，不包含任何服务端依赖。
 
 ## 特性
 
@@ -43,7 +44,8 @@
 - **通配符路由**：
   - `/posts/*` → 匹配 `/posts/any/path/here`，提取 `{ "*": "any/path/here" }`
 - **可选参数路由**：
-  - `/blog/:slug?` → 匹配 `/blog` 或 `/blog/my-post`，提取 `{ slug?: "my-post" }`
+  - `/blog/:slug?` → 匹配 `/blog` 或 `/blog/my-post`，提取
+    `{ slug?: "my-post" }`
 - **查询参数解析**：
   - 自动解析 URL 查询参数（`?key=value`）
 
@@ -126,7 +128,7 @@ router.forward();
 
 // 前进或后退指定步数
 router.go(-2); // 后退两步
-router.go(1);  // 前进一步
+router.go(1); // 前进一步
 ```
 
 ### 路由匹配
@@ -159,7 +161,7 @@ if (match) {
 const userMatch = router.match("/user/123?tab=profile");
 if (userMatch) {
   console.log(userMatch.params); // { id: "123" }
-  console.log(userMatch.query);  // { tab: "profile" }
+  console.log(userMatch.query); // { tab: "profile" }
 }
 ```
 
@@ -324,12 +326,14 @@ if (currentRoute) {
 创建客户端路由器实例。
 
 **参数：**
+
 - `options.routes` - 路由配置列表（由服务端生成）
 - `options.engine` - 渲染引擎类型（`"preact"` 或 `"react"`，默认：`"preact"`）
 
 **返回：** `ClientRouter` 实例
 
 **示例：**
+
 ```typescript
 const router = createRouter({
   routes: [
@@ -345,10 +349,12 @@ const router = createRouter({
 导航到指定路径。
 
 **参数：**
+
 - `path` - 目标路径
 - `replace` - 是否替换当前历史记录（默认：`false`）
 
 **示例：**
+
 ```typescript
 router.navigate("/about");
 router.navigate("/about", true); // 替换当前历史记录
@@ -359,12 +365,14 @@ router.navigate("/about", true); // 替换当前历史记录
 前进或后退指定步数。
 
 **参数：**
+
 - `delta` - 步数（正数前进，负数后退）
 
 **示例：**
+
 ```typescript
 router.go(-1); // 后退一步
-router.go(1);  // 前进一步
+router.go(1); // 前进一步
 router.go(-2); // 后退两步
 ```
 
@@ -381,16 +389,18 @@ router.go(-2); // 后退两步
 匹配路由。
 
 **参数：**
+
 - `pathname` - 路径（如 `/user/123` 或 `/user/123?tab=profile`）
 
 **返回：** 路由匹配结果或 `null`
 
 **示例：**
+
 ```typescript
 const match = router.match("/user/123?tab=profile");
 if (match) {
   console.log(match.params); // { id: "123" }
-  console.log(match.query);  // { tab: "profile" }
+  console.log(match.query); // { tab: "profile" }
 }
 ```
 
@@ -405,11 +415,13 @@ if (match) {
 监听路由变化。
 
 **参数：**
+
 - `callback` - 路由变化回调函数
 
 **返回：** 取消监听的函数
 
 **示例：**
+
 ```typescript
 const unsubscribe = router.onRouteChange((match) => {
   console.log("路由变化:", match);
@@ -423,9 +435,11 @@ unsubscribe();
 添加路由前置守卫。
 
 **参数：**
+
 - `guard` - 守卫函数（返回 `false` 可以阻止导航）
 
 **示例：**
+
 ```typescript
 router.beforeRoute((to, from) => {
   if (!isLoggedIn() && to.route.path === "/dashboard") {
@@ -441,9 +455,11 @@ router.beforeRoute((to, from) => {
 添加路由后置守卫。
 
 **参数：**
+
 - `guard` - 守卫函数
 
 **示例：**
+
 ```typescript
 router.afterRoute((to) => {
   analytics.track("page_view", { path: to.route.path });
@@ -562,7 +578,8 @@ router.navigate("/new-path", true);
 
 ### 路由配置来源
 
-客户端路由配置通常由服务端生成并传递给客户端。服务端使用 `@dreamer/router` 扫描路由文件，生成路由配置，然后通过以下方式传递给客户端：
+客户端路由配置通常由服务端生成并传递给客户端。服务端使用 `@dreamer/router`
+扫描路由文件，生成路由配置，然后通过以下方式传递给客户端：
 
 1. **内联到 HTML**：将路由配置内联到 HTML 中
 2. **API 获取**：通过 API 获取路由配置
@@ -586,6 +603,7 @@ match.load = () => loadComponent(match.route.component);
 ### 浏览器兼容性
 
 需要支持以下浏览器 API：
+
 - `history.pushState` / `history.replaceState`
 - `popstate` 事件
 - `location.pathname`
@@ -595,6 +613,7 @@ match.load = () => loadComponent(match.route.component);
 ### 与服务端路由的配合
 
 客户端路由通常与服务端路由配合使用：
+
 - **服务端**：使用 `@dreamer/router` 进行 SSR 路由匹配和 API 路由处理
 - **客户端**：使用 `@dreamer/router/client` 进行 CSR 路由导航和页面切换
 
@@ -604,7 +623,8 @@ match.load = () => loadComponent(match.route.component);
 
 ## 📝 备注
 
-- **纯浏览器 API 实现**：使用 `globalThis.location`、`globalThis.history` 等浏览器原生 API
+- **纯浏览器 API 实现**：使用 `globalThis.location`、`globalThis.history`
+  等浏览器原生 API
 - **不依赖服务端 API**：客户端代码不包含任何服务端依赖（如 `path` 模块）
 - **统一接口**：与服务端使用相似的 API 接口，降低学习成本
 - **类型安全**：完整的 TypeScript 类型支持

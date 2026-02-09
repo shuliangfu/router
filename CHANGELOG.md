@@ -7,11 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.5] - 2026-02-09
+
+### Fixed
+
+- **Server routing (processFile)**: Normalize `relativePath` with
+  `normalizeRouteFile()` before processing. On Windows, `join()` may produce
+  backslashes; using raw `relativePath` caused incorrect `specialFiles` keys,
+  API route detection (`split("/")` fails with backslashes), and wrong
+  `route.path`. Now all logic uses normalized forward-slash paths for consistent
+  cross-platform behavior.
+
+### Changed
+
+- **Dependencies**: Bump @dreamer/test to ^1.0.2 for latest compatible version.
+
+---
+
 ## [1.0.4] - 2026-02-08
 
 ### Changed
 
-- **Dependencies**: Bump @dreamer/runtime-adapter and @dreamer/test to ensure latest compatible versions are used.
+- **Dependencies**: Bump @dreamer/runtime-adapter and @dreamer/test to ensure
+  latest compatible versions are used.
 
 ---
 
@@ -19,7 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Windows compatibility**: Replace string concatenation with `join()` and `dirname()` for path construction in `loadRouteMiddlewares`, `scanDirectory`, and `processFile`. Ensures cross-platform path handling on Windows.
+- **Windows compatibility**: Replace string concatenation with `join()` and
+  `dirname()` for path construction in `loadRouteMiddlewares`, `scanDirectory`,
+  and `processFile`. Ensures cross-platform path handling on Windows.
 
 ---
 
@@ -27,7 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Windows compatibility**: Normalize `route.file` to use forward slashes. Added `normalizeRouteFile()` to convert backslashes to forward slashes in `parseRoutePath`, ensuring consistent path format on Windows.
+- **Windows compatibility**: Normalize `route.file` to use forward slashes.
+  Added `normalizeRouteFile()` to convert backslashes to forward slashes in
+  `parseRoutePath`, ensuring consistent path format on Windows.
 
 ---
 
@@ -37,13 +59,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 #### Client: Scroll position restoration when navigating between pages
 
-- **Problem**: When users navigated between pages (e.g., clicking links, then pressing browser back/forward), scroll positions were not restored. The previous page always scrolled to top. Causes:
-  1. On `popstate` (browser back/forward), `saveScrollPosition()` used `getPathname()` which returns the new path after navigation — the scroll of the page being left was never saved.
-  2. When `scrollBehavior` was not provided, the default always scrolled to top and ignored any saved positions.
+- **Problem**: When users navigated between pages (e.g., clicking links, then
+  pressing browser back/forward), scroll positions were not restored. The
+  previous page always scrolled to top. Causes:
+  1. On `popstate` (browser back/forward), `saveScrollPosition()` used
+     `getPathname()` which returns the new path after navigation — the scroll of
+     the page being left was never saved.
+  2. When `scrollBehavior` was not provided, the default always scrolled to top
+     and ignored any saved positions.
 - **Solution**:
-  1. Added `saveScrollPositionForPath(path)` to save scroll for a given path. At the start of `handleRouteChange`, when `previousMatch` exists (including from `popstate`), save the current scroll for `previousMatch.fullPath` before processing.
-  2. When `scrollBehavior` is not provided: if `savedPosition` exists for the target path, restore it; otherwise scroll to top.
-- **Impact**: Users switching between pages will now have their scroll positions remembered and restored when using browser back/forward. No configuration required.
+  1. Added `saveScrollPositionForPath(path)` to save scroll for a given path. At
+     the start of `handleRouteChange`, when `previousMatch` exists (including
+     from `popstate`), save the current scroll for `previousMatch.fullPath`
+     before processing.
+  2. When `scrollBehavior` is not provided: if `savedPosition` exists for the
+     target path, restore it; otherwise scroll to top.
+- **Impact**: Users switching between pages will now have their scroll positions
+  remembered and restored when using browser back/forward. No configuration
+  required.
 
 ---
 
@@ -51,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-First stable release. Full file-based routing system compatible with Deno and Bun.
+First stable release. Full file-based routing system compatible with Deno and
+Bun.
 
 #### Server Router (@dreamer/router)
 
@@ -92,7 +126,8 @@ First stable release. Full file-based routing system compatible with Deno and Bu
 - **Route matching**: Static/dynamic/wildcard matching, query param parsing
 - **Scroll behavior**: Custom scroll behavior, save/restore position
 - **Prefetch**: `prefetch()` preload components, component cache
-- **Link / NavLink components**: Declarative navigation, active state, prefetch support
+- **Link / NavLink components**: Declarative navigation, active state, prefetch
+  support
 - **Route mode**: History mode (default), Hash mode
 - **Base path**: Deploy under subpath
 - **Multi-engine**: Preact (default), React

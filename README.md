@@ -1,6 +1,7 @@
 # @dreamer/router
 
-> A file-based routing system compatible with Deno and Bun, providing a unified routing interface for server-side route matching and client-side navigation
+> A file-based routing system compatible with Deno and Bun, providing a unified
+> routing interface for server-side route matching and client-side navigation
 
 English | [中文 (Chinese)](./README-zh.md)
 
@@ -13,8 +14,11 @@ English | [中文 (Chinese)](./README-zh.md)
 ## 🎯 Features
 
 File-based routing system with a unified abstraction layer:
-- **Server**: Route file scanning, SSR route matching, API routes, middleware chain, redirects
-- **Client**: Browser navigation, route guards, history, scroll behavior, prefetch, Link component
+
+- **Server**: Route file scanning, SSR route matching, API routes, middleware
+  chain, redirects
+- **Client**: Browser navigation, route guards, history, scroll behavior,
+  prefetch, Link component
 
 ---
 
@@ -43,12 +47,12 @@ import { createRouter } from "jsr:@dreamer/router/client";
 
 ## 🌍 Environment Compatibility
 
-| Environment | Support | Notes |
-|-------------|---------|-------|
-| Deno | ✅ | 2.6+ |
-| Bun | ✅ | 1.3.5+ |
-| Server | ✅ | SSR route matching, API routes, middleware |
-| Browser | ✅ | Client routing (/client) |
+| Environment | Support | Notes                                      |
+| ----------- | ------- | ------------------------------------------ |
+| Deno        | ✅      | 2.6+                                       |
+| Bun         | ✅      | 1.3.5+                                     |
+| Server      | ✅      | SSR route matching, API routes, middleware |
+| Browser     | ✅      | Client routing (/client)                   |
 
 ---
 
@@ -162,7 +166,10 @@ const response = await router.handleRequest(request, async (match, context) => {
 
   // Handle redirect
   if (match.redirect) {
-    return Response.redirect(match.redirect.destination, match.redirect.statusCode);
+    return Response.redirect(
+      match.redirect.destination,
+      match.redirect.statusCode,
+    );
   }
 
   // Load and render page
@@ -176,11 +183,11 @@ const response = await router.handleRequest(request, async (match, context) => {
 
 ```typescript
 import {
-  createRouter,
-  useRouter,
-  useRoute,
-  useParams,
   createLinkComponent,
+  createRouter,
+  useParams,
+  useRoute,
+  useRouter,
 } from "jsr:@dreamer/router/client";
 
 // Create client router
@@ -242,7 +249,10 @@ router.go(-2);
 
 ```typescript
 import { h } from "preact";
-import { createLinkComponent, createNavLinkComponent } from "jsr:@dreamer/router/client";
+import {
+  createLinkComponent,
+  createNavLinkComponent,
+} from "jsr:@dreamer/router/client";
 
 // Create Link component
 const Link = createLinkComponent(h);
@@ -281,7 +291,13 @@ function Navigation() {
 ### Hooks Usage
 
 ```typescript
-import { useRouter, useRoute, useParams, useQuery, useMeta } from "jsr:@dreamer/router/client";
+import {
+  useMeta,
+  useParams,
+  useQuery,
+  useRoute,
+  useRouter,
+} from "jsr:@dreamer/router/client";
 
 function UserPage() {
   const router = useRouter();
@@ -338,7 +354,9 @@ const logMiddleware: MiddlewareFunction = async (context, next) => {
   const start = Date.now();
   const response = await next();
   const duration = Date.now() - start;
-  console.log(`${context.request.method} ${context.request.url} - ${duration}ms`);
+  console.log(
+    `${context.request.method} ${context.request.url} - ${duration}ms`,
+  );
   return response;
 };
 
@@ -400,37 +418,37 @@ await router.navigate("/about");
 
 Create server router instance.
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| routesDir | string | - | Route file directory |
-| apiMode | "restful" \| "action" | "restful" | API route style |
-| redirects | RedirectConfig[] | [] | Redirect config |
-| middlewares | MiddlewareFunction[] | [] | Global middleware |
-| skipAppValidation | boolean | false | Skip _app validation |
+| Param             | Type                  | Default   | Description          |
+| ----------------- | --------------------- | --------- | -------------------- |
+| routesDir         | string                | -         | Route file directory |
+| apiMode           | "restful" \| "action" | "restful" | API route style      |
+| redirects         | RedirectConfig[]      | []        | Redirect config      |
+| middlewares       | MiddlewareFunction[]  | []        | Global middleware    |
+| skipAppValidation | boolean               | false     | Skip _app validation |
 
 #### Router Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| scan() | Promise\<void\> | Scan route files |
-| match(pathname, options?) | Promise\<RouteMatch \| null\> | Match route |
-| handleRequest(request, handler) | Promise\<Response\> | Handle request (with middleware) |
-| use(middleware) | void | Add global middleware |
-| addRedirect(config) | void | Add redirect config |
-| getRoutes() | Route[] | Get all routes |
-| getClientRoutes() | ClientRoute[] | Get client route config |
-| getApiMode() | "restful" \| "action" | Get API mode |
-| getSpecialFile(name) | string \| undefined | Get special file path |
-| loadModule(path) | Promise\<any\> | Load module |
-| clearCache(path?) | void | Clear module cache |
+| Method                          | Returns                       | Description                      |
+| ------------------------------- | ----------------------------- | -------------------------------- |
+| scan()                          | Promise\<void\>               | Scan route files                 |
+| match(pathname, options?)       | Promise\<RouteMatch \| null\> | Match route                      |
+| handleRequest(request, handler) | Promise\<Response\>           | Handle request (with middleware) |
+| use(middleware)                 | void                          | Add global middleware            |
+| addRedirect(config)             | void                          | Add redirect config              |
+| getRoutes()                     | Route[]                       | Get all routes                   |
+| getClientRoutes()               | ClientRoute[]                 | Get client route config          |
+| getApiMode()                    | "restful" \| "action"         | Get API mode                     |
+| getSpecialFile(name)            | string \| undefined           | Get special file path            |
+| loadModule(path)                | Promise\<any\>                | Load module                      |
+| clearCache(path?)               | void                          | Clear module cache               |
 
 #### Helper Functions
 
-| Function | Description |
-|----------|-------------|
-| json(data, status?) | Create JSON response |
-| html(content, status?) | Create HTML response |
-| notFound(message?) | Create 404 response |
+| Function                                         | Description              |
+| ------------------------------------------------ | ------------------------ |
+| json(data, status?)                              | Create JSON response     |
+| html(content, status?)                           | Create HTML response     |
+| notFound(message?)                               | Create 404 response      |
 | createRedirectResponse(destination, statusCode?) | Create redirect response |
 
 ### Client API (@dreamer/router/client)
@@ -439,80 +457,80 @@ Create server router instance.
 
 Create client router instance.
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| routes | ClientRoute[] | - | Route config list |
-| engine | "preact" \| "react" | "preact" | Render engine |
-| basePath | string | "" | Base path |
-| mode | "history" \| "hash" | "history" | Route mode |
-| scrollBehavior | ScrollBehaviorHandler | - | Scroll behavior function |
+| Param          | Type                  | Default   | Description              |
+| -------------- | --------------------- | --------- | ------------------------ |
+| routes         | ClientRoute[]         | -         | Route config list        |
+| engine         | "preact" \| "react"   | "preact"  | Render engine            |
+| basePath       | string                | ""        | Base path                |
+| mode           | "history" \| "hash"   | "history" | Route mode               |
+| scrollBehavior | ScrollBehaviorHandler | -         | Scroll behavior function |
 
 #### ClientRouter Methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| start() | void | Start router, begin link interception |
-| navigate(path, options?) | Promise\<void\> | Navigate to path |
-| replace(path, state?) | Promise\<void\> | Replace history and navigate |
-| back() | void | Go back |
-| forward() | void | Go forward |
-| go(delta) | void | Go by delta |
-| match(pathname) | ClientRouteMatch \| null | Match route |
-| getCurrentRoute() | ClientRouteMatch \| null | Get current route |
-| prefetch(path) | Promise\<unknown \| null\> | Prefetch route component |
-| isActive(path, exact?) | boolean | Check if path matches current route |
-| resolvePath(path) | string | Resolve path (add base path) |
-| onRouteChange(callback) | () => void | Listen route change |
-| onNavigationState(callback) | () => void | Listen navigation state |
-| beforeRoute(guard) | () => void | Add pre-guard |
-| afterRoute(guard) | () => void | Add post-guard |
-| getRoutes() | ClientRoute[] | Get all routes |
-| getEngine() | string | Get render engine |
-| getMode() | RouterMode | Get route mode |
-| getBasePath() | string | Get base path |
-| getNavigationState() | NavigationState | Get navigation state |
-| addRoute(route) | void | Add route dynamically |
-| removeRoute(path) | boolean | Remove route dynamically |
-| setComponentLoader(loader) | void | Set component loader |
-| clearCache(component?) | void | Clear component cache |
-| destroy() | void | Destroy router |
+| Method                      | Returns                    | Description                           |
+| --------------------------- | -------------------------- | ------------------------------------- |
+| start()                     | void                       | Start router, begin link interception |
+| navigate(path, options?)    | Promise\<void\>            | Navigate to path                      |
+| replace(path, state?)       | Promise\<void\>            | Replace history and navigate          |
+| back()                      | void                       | Go back                               |
+| forward()                   | void                       | Go forward                            |
+| go(delta)                   | void                       | Go by delta                           |
+| match(pathname)             | ClientRouteMatch \| null   | Match route                           |
+| getCurrentRoute()           | ClientRouteMatch \| null   | Get current route                     |
+| prefetch(path)              | Promise\<unknown \| null\> | Prefetch route component              |
+| isActive(path, exact?)      | boolean                    | Check if path matches current route   |
+| resolvePath(path)           | string                     | Resolve path (add base path)          |
+| onRouteChange(callback)     | () => void                 | Listen route change                   |
+| onNavigationState(callback) | () => void                 | Listen navigation state               |
+| beforeRoute(guard)          | () => void                 | Add pre-guard                         |
+| afterRoute(guard)           | () => void                 | Add post-guard                        |
+| getRoutes()                 | ClientRoute[]              | Get all routes                        |
+| getEngine()                 | string                     | Get render engine                     |
+| getMode()                   | RouterMode                 | Get route mode                        |
+| getBasePath()               | string                     | Get base path                         |
+| getNavigationState()        | NavigationState            | Get navigation state                  |
+| addRoute(route)             | void                       | Add route dynamically                 |
+| removeRoute(path)           | boolean                    | Remove route dynamically              |
+| setComponentLoader(loader)  | void                       | Set component loader                  |
+| clearCache(component?)      | void                       | Clear component cache                 |
+| destroy()                   | void                       | Destroy router                        |
 
 #### Hooks
 
-| Hook | Returns | Description |
-|------|---------|-------------|
-| useRouter() | ClientRouter | Get router instance |
-| useRoute() | ClientRouteMatch \| null | Get current route |
-| useParams() | Record\<string, string\> | Get route params |
-| useQuery() | Record\<string, string\> | Get query params |
-| useMeta() | RouteMeta | Get route metadata |
-| useNavigationState() | NavigationState | Get navigation state |
-| useIsActive(path, exact?) | boolean | Check if path is active |
+| Hook                      | Returns                  | Description             |
+| ------------------------- | ------------------------ | ----------------------- |
+| useRouter()               | ClientRouter             | Get router instance     |
+| useRoute()                | ClientRouteMatch \| null | Get current route       |
+| useParams()               | Record\<string, string\> | Get route params        |
+| useQuery()                | Record\<string, string\> | Get query params        |
+| useMeta()                 | RouteMeta                | Get route metadata      |
+| useNavigationState()      | NavigationState          | Get navigation state    |
+| useIsActive(path, exact?) | boolean                  | Check if path is active |
 
 #### Component Factory Functions
 
-| Function | Description |
-|----------|-------------|
-| createLinkComponent(h) | Create Link component |
-| createNavLinkComponent(h) | Create NavLink component |
-| createLinkProps(props) | Create Link props object |
+| Function                  | Description                 |
+| ------------------------- | --------------------------- |
+| createLinkComponent(h)    | Create Link component       |
+| createNavLinkComponent(h) | Create NavLink component    |
+| createLinkProps(props)    | Create Link props object    |
 | createNavLinkProps(props) | Create NavLink props object |
 
 #### Type Definitions
 
 ```typescript
 interface ClientRoute {
-  path: string;           // Route path
-  component: string;       // Component id
+  path: string; // Route path
+  component: string; // Component id
   type?: "static" | "dynamic" | "wildcard" | "optional";
-  meta?: RouteMeta;       // Route metadata
-  redirect?: string;       // Redirect target
+  meta?: RouteMeta; // Route metadata
+  redirect?: string; // Redirect target
 }
 
 interface RouteMeta {
-  title?: string;         // Page title
+  title?: string; // Page title
   requiresAuth?: boolean; // Requires auth
-  keepAlive?: boolean;    // Cache component
+  keepAlive?: boolean; // Cache component
   [key: string]: unknown; // Custom data
 }
 
@@ -534,29 +552,29 @@ type RouterMode = "history" | "hash";
 
 ## 📊 Test Report
 
-| Metric | Value |
-|--------|-------|
-| Total tests | 130 |
-| Passed | 130 |
-| Failed | 0 |
-| Pass rate | 100% |
-| Test date | 2026-02-03 |
-| Duration | ~31s |
+| Metric      | Value      |
+| ----------- | ---------- |
+| Total tests | 130        |
+| Passed      | 130        |
+| Failed      | 0          |
+| Pass rate   | 100%       |
+| Test date   | 2026-02-03 |
+| Duration    | ~31s       |
 
 ### Runtime Compatibility
 
 | Runtime | Tests | Passed | Status |
-|---------|-------|--------|--------|
-| Deno | 130 | 130 | ✅ |
-| Bun | 130 | 130 | ✅ |
+| ------- | ----- | ------ | ------ |
+| Deno    | 130   | 130    | ✅     |
+| Bun     | 130   | 130    | ✅     |
 
 ### Test File Coverage
 
-| Test file | Count | Coverage |
-|-----------|-------|----------|
-| client-browser.test.ts | 27 | Browser: navigation, guards, link interception, history |
-| client.test.ts | 69 | Client unit: route matching, metadata, basePath, hash mode |
-| mod.test.ts | 34 | Server: scan, match, redirect, middleware |
+| Test file              | Count | Coverage                                                   |
+| ---------------------- | ----- | ---------------------------------------------------------- |
+| client-browser.test.ts | 27    | Browser: navigation, guards, link interception, history    |
+| client.test.ts         | 69    | Client unit: route matching, metadata, basePath, hash mode |
+| mod.test.ts            | 34    | Server: scan, match, redirect, middleware                  |
 
 See [TEST_REPORT.md](./TEST_REPORT.md) for details.
 
@@ -579,6 +597,7 @@ const url = new URL(globalThis.location.href);
 ### API Route Style
 
 API routes must choose one style via config, **cannot mix**:
+
 - `apiMode: "restful"` - RESTful (GET, POST, PUT, DELETE)
 - `apiMode: "action"` - Action style (login, register)
 
@@ -603,6 +622,7 @@ router.start(); // Begin intercepting <a> clicks
 ### Links Not Intercepted
 
 These links are not intercepted:
+
 - `target="_blank"`
 - `download` attribute
 - `data-native` attribute
@@ -613,9 +633,11 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-**v1.0.4** (2026-02-08)
+**v1.0.5** (2026-02-09)
 
-- **Changed**: Bump @dreamer/runtime-adapter and @dreamer/test to latest compatible versions
+- **Fixed**: Server routing (processFile) - normalize path for Windows
+  compatibility in specialFiles, API detection, route.path
+- **Changed**: Bump @dreamer/test to ^1.0.2
 
 See [CHANGELOG.md](./CHANGELOG.md) for full history.
 
