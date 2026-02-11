@@ -21,7 +21,14 @@ import {
   serve,
   type ServeHandle,
 } from "@dreamer/runtime-adapter";
-import { afterAll, beforeAll, describe, expect, it } from "@dreamer/test";
+import {
+  afterAll,
+  beforeAll,
+  cleanupAllBrowsers,
+  describe,
+  expect,
+  it,
+} from "@dreamer/test";
 
 // 服务器实例
 let server: ServeHandle | null = null;
@@ -36,14 +43,9 @@ const serverBrowserConfig = {
   timeout: 60_000,
   browser: {
     enabled: true,
+    browserSource: "test" as const,
     globalName: "RouterClient",
     headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
     reuseBrowser: true,
   },
 };
@@ -55,17 +57,12 @@ const browserConfig = {
   timeout: 60_000,
   browser: {
     enabled: true,
+    browserSource: "test" as const,
     entryPoint: "./src/client/mod.ts",
     globalName: "RouterClient",
     browserMode: false,
     moduleLoadTimeout: 30_000,
     headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
     reuseBrowser: true,
     bodyContent: `<div id="app"></div>`,
   },
@@ -75,8 +72,8 @@ const browserConfig = {
  * 启动测试服务器
  */
 async function startTestServer(): Promise<number> {
-  // 使用 import map 中配置的 esbuild，兼容 Deno 和 Bun
-  const esbuild = await import("esbuild");
+  // 使用 @dreamer/esbuild 提供的 esbuild 实例，兼容 Deno 和 Bun
+  const { esbuild } = await import("@dreamer/esbuild");
   const entryPoint = resolve(cwd(), "./src/client/mod.ts");
 
   const result = await esbuild.build({
@@ -162,6 +159,7 @@ describe("客户端路由器 - 浏览器测试", () => {
   afterAll(async () => {
     console.log("停止测试服务器...");
     await stopTestServer();
+    await cleanupAllBrowsers();
   });
 
   // ==================== 基本功能测试（file:// 协议） ====================
@@ -305,7 +303,7 @@ describe("客户端路由器 - 浏览器测试", () => {
     if (!browser) return;
     if (!await prepareBrowser(browser)) return;
 
-    const result = await browser.evaluate(() => {
+    const result = await browser.evaluate(async () => {
       const RouterClient = (globalThis as any).RouterClient;
       if (!RouterClient) return { error: "RouterClient not available" };
 
@@ -319,7 +317,8 @@ describe("客户端路由器 - 浏览器测试", () => {
       router.onRouteChange((match: any) => {
         callHistory.push(match?.route.path || "null");
       });
-      router.navigate("/about");
+      // navigate 为异步，必须 await 完成后再返回，否则 onRouteChange 只触发一次
+      await router.navigate("/about");
 
       return { callHistory };
     });

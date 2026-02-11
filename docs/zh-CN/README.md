@@ -3,10 +3,10 @@
 > 一个兼容 Deno 和 Bun
 > 的文件路由系统，提供统一的文件路由接口，支持服务端路由匹配和客户端路由导航
 
-[English](./README.md) | 中文 (Chinese)
+[English](../../README.md) | 中文 (Chinese)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE.md)
 [![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
@@ -589,7 +589,7 @@ type RouterMode = "history" | "hash";
 import * as path from "std/path";
 
 // ✅ 正确 - 使用浏览器 API
-const url = new URL(window.location.href);
+const url = new URL(globalThis.location.href);
 ```
 
 ### API 路由形式选择
@@ -637,7 +637,7 @@ router.start(); // 开始拦截 <a> 标签点击
   ClientRouterOptions（客户端）。传 `debug: true` 时输出路由匹配、模块加载、
   导航等详细调试日志，便于诊断 Windows 路径问题及组件加载失败。
 
-详见 [CHANGELOG-zh.md](./CHANGELOG-zh.md)。
+详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
@@ -649,7 +649,7 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📄 许可证
 
-MIT License - 详见 [LICENSE.md](./LICENSE.md)
+MIT License - 详见 [LICENSE.md](../../LICENSE.md)
 
 ---
 

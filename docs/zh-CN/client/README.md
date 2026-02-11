@@ -1,19 +1,21 @@
 # @dreamer/router/client
 
-> 一个用于浏览器的路由导航库，提供客户端路由导航功能，支持 SPA 应用的路由管理
+> 一个用于浏览器的路由导航包，提供客户端路由导航功能，支持 SPA 应用的路由管理
 
 [![JSR](https://jsr.io/badges/@dreamer/router/client)](https://jsr.io/@dreamer/router/client)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../LICENSE.md)
+
+[English](../../en-US/client/README.md) | 中文 (Chinese)
 
 ---
 
 ## 服务端支持
 
-服务端路由支持请查看 [服务端文档](../../README.md)。
+服务端路由支持请查看 [服务端文档](../README.md)。
 
 ## 功能
 
-客户端路由导航库，提供统一的客户端路由抽象层，支持浏览器路由导航和历史记录管理。使用浏览器原生
+客户端路由导航包，提供统一的客户端路由抽象层，支持浏览器路由导航和历史记录管理。使用浏览器原生
 API（`history.pushState`、`popstate` 事件等）实现，不包含任何服务端依赖。
 
 ## 特性
@@ -145,7 +147,7 @@ const router = createRouter({
 });
 
 // 匹配当前路径
-const match = router.match(window.location.pathname);
+const match = router.match(globalThis.location.pathname);
 
 if (match) {
   console.log("匹配的路由:", match.route.path);
@@ -255,7 +257,7 @@ router.afterRoute((to, from) => {
 
 // 后置守卫：滚动到顶部
 router.afterRoute(() => {
-  window.scrollTo(0, 0);
+  globalThis.scrollTo(0, 0);
 });
 ```
 
@@ -558,7 +560,7 @@ router.onRouteChange(handleRouteChange);
 
 ```typescript
 // 根据当前路径加载对应组件
-const match = router.match(window.location.pathname);
+const match = router.match(globalThis.location.pathname);
 if (match) {
   const Component = await match.load();
   render(<Component params={match.params} />);
@@ -628,7 +630,7 @@ match.load = () => loadComponent(match.route.component);
 - **不依赖服务端 API**：客户端代码不包含任何服务端依赖（如 `path` 模块）
 - **统一接口**：与服务端使用相似的 API 接口，降低学习成本
 - **类型安全**：完整的 TypeScript 类型支持
-- **无外部依赖**：纯 TypeScript 实现，不依赖任何外部库
+- **无外部依赖**：纯 TypeScript 实现，不依赖任何外部包
 
 ---
 

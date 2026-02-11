@@ -85,4 +85,4 @@
 
 首个稳定版本。完整基于文件的路由系统，兼容 Deno 与 Bun。
 
-（详细说明见 [CHANGELOG.md](./CHANGELOG.md)）
+（详细说明见 [CHANGELOG.md](../en-US/CHANGELOG.md) 英文版）

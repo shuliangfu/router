@@ -3,11 +3,11 @@
 > A file-based routing system compatible with Deno and Bun, providing a unified
 > routing interface for server-side route matching and client-side navigation
 
-English | [中文 (Chinese)](./README-zh.md)
+English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
-[![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -576,7 +576,7 @@ type RouterMode = "history" | "hash";
 | client.test.ts         | 69    | Client unit: route matching, metadata, basePath, hash mode |
 | mod.test.ts            | 34    | Server: scan, match, redirect, middleware                  |
 
-See [TEST_REPORT.md](./TEST_REPORT.md) for details.
+See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
 ---
 
@@ -640,7 +640,7 @@ These links are not intercepted:
   matching, loadModule/loadComponent, and navigation to help diagnose Windows
   path issues and component loading failures.
 
-See [CHANGELOG.md](./CHANGELOG.md) for full history.
+See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 
 ---
 
