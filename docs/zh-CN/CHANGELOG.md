@@ -7,6 +7,22 @@
 
 ---
 
+## [1.0.7] - 2026-02-10
+
+### 新增
+
+- **文档**：客户端子路径文档置于 `docs/zh-CN/client/README.md` 与
+  `docs/en-US/client/README.md`（由 `src/client/README.md` 迁移并新增英文版）。
+
+### 变更
+
+- **文档**：文档结构调整为 `docs/en-US/`、`docs/zh-CN/`；根目录 README 保留英文入口；
+  CHANGELOG、TEST_REPORT 及中文 README 迁入对应目录；zh-CN 测试报告已翻译为中文；
+  所有文档链接已更新。
+- **CI**：为浏览器测试增加 Playwright Chromium 安装步骤（Linux、Windows、macOS）。
+
+---
+
 ## [1.0.6] - 2026-02-09
 
 ### 新增

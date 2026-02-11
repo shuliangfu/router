@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.7] - 2026-02-10
+
+### Added
+
+- **Docs**: Client subpath documentation at `docs/zh-CN/client/README.md` and
+  `docs/en-US/client/README.md` (moved from `src/client/README.md`; en-US
+  added as translation).
+
+### Changed
+
+- **Docs**: Restructure docs into `docs/en-US/` and `docs/zh-CN/`. Root README
+  remains English entry; CHANGELOG, TEST_REPORT, and zh-CN README moved;
+  TEST_REPORT in zh-CN translated to Chinese. All doc links updated.
+- **CI**: Add Playwright Chromium install step for browser tests (Linux,
+  Windows, macOS).
+
+---
+
 ## [1.0.6] - 2026-02-09
 
 ### Added

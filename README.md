@@ -633,12 +633,12 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-**v1.0.6** (2026-02-09)
+**v1.0.7** (2026-02-10)
 
-- **Added**: `debug?: boolean` option for RouterOptions (server) and
-  ClientRouterOptions (client). When `debug: true`, emits detailed logs for route
-  matching, loadModule/loadComponent, and navigation to help diagnose Windows
-  path issues and component loading failures.
+- **Added**: Client subpath docs at `docs/zh-CN/client/README.md` and
+  `docs/en-US/client/README.md`.
+- **Changed**: Docs restructured to `docs/en-US/` and `docs/zh-CN/`; doc links
+  updated; CI adds Playwright Chromium install for browser tests.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 

@@ -631,11 +631,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.6**（2026-02-09）
+**v1.0.7**（2026-02-10）
 
-- **新增**：`debug?: boolean` 选项，支持 RouterOptions（服务端）和
-  ClientRouterOptions（客户端）。传 `debug: true` 时输出路由匹配、模块加载、
-  导航等详细调试日志，便于诊断 Windows 路径问题及组件加载失败。
+- **新增**：客户端子路径文档置于 `docs/zh-CN/client/` 与 `docs/en-US/client/`。
+- **变更**：文档结构调整为 `docs/en-US/`、`docs/zh-CN/`，链接已更新；CI 增加
+  Playwright Chromium 安装以支持浏览器测试。
 
 详见 [CHANGELOG.md](./CHANGELOG.md)。
 
