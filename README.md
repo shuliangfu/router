@@ -633,12 +633,13 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-**v1.0.7** (2026-02-10)
+**v1.0.8** (2026-02-12)
 
-- **Added**: Client subpath docs at `docs/zh-CN/client/README.md` and
-  `docs/en-US/client/README.md`.
-- **Changed**: Docs restructured to `docs/en-US/` and `docs/zh-CN/`; doc links
-  updated; CI adds Playwright Chromium install for browser tests.
+- **Fixed**: Client click handling when `event.target` is a text node (e.g.
+  Solid.js); find `<a>` via `parentNode`/`nodeType`. Call
+  `stopImmediatePropagation()` after `preventDefault()` to avoid double
+  handling.
+- **Added**: Client `debugLog` for click interception when `debug: true`.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 

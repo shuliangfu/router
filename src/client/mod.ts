@@ -60,6 +60,7 @@ interface BrowserMouseEvent {
   altKey: boolean;
   metaKey: boolean;
   preventDefault: () => void;
+  stopImmediatePropagation?: () => void;
 }
 
 /**
@@ -520,7 +521,13 @@ export class ClientRouter {
       }
     }
 
-    this.debugLog("match", "no match for pathname:", pathname, "routes count:", this.routes.length);
+    this.debugLog(
+      "match",
+      "no match for pathname:",
+      pathname,
+      "routes count:",
+      this.routes.length,
+    );
     return null;
   }
 
@@ -889,17 +896,26 @@ export class ClientRouter {
         return;
       }
 
-      // 查找 <a> 元素
-      let target = mouseEvent.target as BrowserElement | null;
-      while (target && target.tagName !== "A") {
-        target = target.parentElement;
+      // 查找 <a> 元素（Solid 等框架下 event.target 可能为文本节点，文本节点无 parentElement，需用 parentNode 向上查找）
+      type NodeLike = {
+        nodeType?: number;
+        tagName?: string;
+        parentNode?: NodeLike | null;
+      } | null;
+      let node: NodeLike = mouseEvent.target as unknown as NodeLike;
+      let anchor: BrowserElement | null = null;
+      while (node != null) {
+        if (node.nodeType === 1 && (node as BrowserElement).tagName === "A") {
+          anchor = node as unknown as BrowserElement;
+          break;
+        }
+        node = node.parentNode ?? null;
       }
 
-      if (!target) {
+      if (!anchor) {
+        this.debugLog("click", "no <a> found for target", mouseEvent.target);
         return;
       }
-
-      const anchor = target;
       const href = anchor.getAttribute("href");
       if (!href) {
         return;
@@ -940,8 +956,11 @@ export class ClientRouter {
         }
 
         mouseEvent.preventDefault();
+        // 阻止事件继续派发，避免 Solid 等框架的 document 委托监听器收到点击后触发默认导航
+        mouseEvent.stopImmediatePropagation?.();
 
         const path = linkUrl.pathname + linkUrl.search + linkUrl.hash;
+        this.debugLog("click", "intercepted", href, "-> navigate", path);
         this.navigate(path);
       } catch {
         return;
@@ -1260,7 +1279,13 @@ export class ClientRouter {
    * 加载组件（带 LRU 淘汰策略，防止内存泄漏）
    */
   private loadComponent(component: string): Promise<unknown> {
-    this.debugLog("loadComponent", "component:", component, "cached:", this.componentCache.has(component));
+    this.debugLog(
+      "loadComponent",
+      "component:",
+      component,
+      "cached:",
+      this.componentCache.has(component),
+    );
 
     // 检查缓存
     if (this.componentCache.has(component)) {

@@ -631,11 +631,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.7**（2026-02-10）
+**v1.0.8**（2026-02-12）
 
-- **新增**：客户端子路径文档置于 `docs/zh-CN/client/` 与 `docs/en-US/client/`。
-- **变更**：文档结构调整为 `docs/en-US/`、`docs/zh-CN/`，链接已更新；CI 增加
-  Playwright Chromium 安装以支持浏览器测试。
+- **修复**：当 `event.target` 为文本节点（如 Solid.js）时正确找到
+  `<a>`；拦截点击后 调用 `stopImmediatePropagation()` 避免重复处理。
+- **新增**：客户端 `debug: true` 时对点击拦截输出 `debugLog`。
 
 详见 [CHANGELOG.md](./CHANGELOG.md)。
 

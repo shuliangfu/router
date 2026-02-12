@@ -347,7 +347,13 @@ export class Router {
       }
     }
 
-    this.debugLog("match", "no match for pathname:", pathname, "routes count:", this.routes.length);
+    this.debugLog(
+      "match",
+      "no match for pathname:",
+      pathname,
+      "routes count:",
+      this.routes.length,
+    );
     return null;
   }
 
@@ -461,7 +467,13 @@ export class Router {
    * @returns 模块
    */
   async loadModule(filePath: string): Promise<any> {
-    this.debugLog("loadModule", "filePath:", filePath, "cached:", this.moduleCache.has(filePath));
+    this.debugLog(
+      "loadModule",
+      "filePath:",
+      filePath,
+      "cached:",
+      this.moduleCache.has(filePath),
+    );
 
     // 检查缓存
     if (this.moduleCache.has(filePath)) {

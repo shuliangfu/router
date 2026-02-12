@@ -7,13 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.8] - 2026-02-12
+
+### Fixed
+
+- **Client click handling**: When `event.target` is a text node (e.g. in
+  Solid.js or other frameworks that use document-level delegation), the anchor
+  was not found because text nodes have no `parentElement`. Now the handler
+  walks up via `parentNode` and checks `nodeType === 1` and `tagName === "A"` to
+  find the `<a>` element correctly.
+- **Client click interception**: After `preventDefault()`, call
+  `stopImmediatePropagation()` so that framework document-level listeners (e.g.
+  Solid) do not also handle the click and trigger default navigation. Added
+  optional `stopImmediatePropagation` to the internal `BrowserMouseEvent` type.
+
+### Added
+
+- **Client debug**: `debugLog` for click interception ("intercepted", "no
+  &lt;a&gt; found for target") when `debug: true` in client options.
+
+---
+
 ## [1.0.7] - 2026-02-10
 
 ### Added
 
 - **Docs**: Client subpath documentation at `docs/zh-CN/client/README.md` and
-  `docs/en-US/client/README.md` (moved from `src/client/README.md`; en-US
-  added as translation).
+  `docs/en-US/client/README.md` (moved from `src/client/README.md`; en-US added
+  as translation).
 
 ### Changed
 

@@ -7,6 +7,26 @@
 
 ---
 
+## [1.0.8] - 2026-02-12
+
+### 修复
+
+- **客户端点击处理**：当 `event.target` 为文本节点（如 Solid.js 等使用 document
+  委托的框架）时，因文本节点无 `parentElement` 导致找不到 `<a>`。现改为通过
+  `parentNode` 向上查找，并用 `nodeType === 1` 与 `tagName === "A"` 正确找到
+  `<a>` 元素。
+- **客户端点击拦截**：在 `preventDefault()` 后调用
+  `stopImmediatePropagation()`，避免框架在 document 上的监听器（如 Solid）
+  再次处理点击并触发默认导航。内部 `BrowserMouseEvent` 类型增加可选
+  `stopImmediatePropagation`。
+
+### 新增
+
+- **客户端调试**：在客户端选项 `debug: true` 时，对点击拦截输出
+  `debugLog`（"intercepted"、"no &lt;a&gt; found for target"）。
+
+---
+
 ## [1.0.7] - 2026-02-10
 
 ### 新增
@@ -16,10 +36,11 @@
 
 ### 变更
 
-- **文档**：文档结构调整为 `docs/en-US/`、`docs/zh-CN/`；根目录 README 保留英文入口；
-  CHANGELOG、TEST_REPORT 及中文 README 迁入对应目录；zh-CN 测试报告已翻译为中文；
-  所有文档链接已更新。
-- **CI**：为浏览器测试增加 Playwright Chromium 安装步骤（Linux、Windows、macOS）。
+- **文档**：文档结构调整为 `docs/en-US/`、`docs/zh-CN/`；根目录 README
+  保留英文入口； CHANGELOG、TEST_REPORT 及中文 README 迁入对应目录；zh-CN
+  测试报告已翻译为中文； 所有文档链接已更新。
+- **CI**：为浏览器测试增加 Playwright Chromium
+  安装步骤（Linux、Windows、macOS）。
 
 ---
 
