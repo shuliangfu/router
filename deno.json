@@ -1,7 +1,7 @@
 {
   "name": "@dreamer/router",
-  "version": "1.0.8",
-  "license": "MIT",
+  "version": "1.0.9",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./client": "./src/client/mod.ts"
@@ -14,7 +14,8 @@
       "src/mod.ts",
       "src/client/mod.ts",
       "src/client/components.ts",
-      "LICENSE.md",
+      "LICENSE",
+      "NOTICE",
       "README.md"
     ],
     "exclude": [

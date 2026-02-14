@@ -6,7 +6,7 @@
 English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
@@ -633,13 +633,13 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-**v1.0.8** (2026-02-12)
+**v1.0.9** (2026-02-14)
 
-- **Fixed**: Client click handling when `event.target` is a text node (e.g.
-  Solid.js); find `<a>` via `parentNode`/`nodeType`. Call
-  `stopImmediatePropagation()` after `preventDefault()` to avoid double
-  handling.
-- **Added**: Client `debugLog` for click interception when `debug: true`.
+- **Fixed**: Client navigation now awaits route-change callbacks so SPA content
+  renders before navigation completes; prevents blank main content after
+  clicking links (e.g. View Hybrid).
+- **Changed**: `RouteChangeCallback` supports async; `notifyRouteChange` is
+  async and awaited in `handleRouteChange`. License: Apache 2.0.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 
@@ -653,7 +653,7 @@ Issues and Pull Requests are welcome!
 
 ## 📄 License
 
-MIT License - see [LICENSE.md](./LICENSE.md)
+Apache License 2.0 - see [LICENSE](./LICENSE)
 
 ---
 

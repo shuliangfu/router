@@ -4,7 +4,7 @@
 > management
 
 [![JSR](https://jsr.io/badges/@dreamer/router/client)](https://jsr.io/@dreamer/router/client)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../../LICENSE)
 
 [English](./README.md) | [中文 (Chinese)](../../zh-CN/client/README.md)
 
@@ -267,7 +267,7 @@ Issues and Pull Requests are welcome.
 
 ## License
 
-MIT — see [LICENSE.md](../../../LICENSE.md).
+MIT — see [LICENSE.md](../../../LICENSE).
 
 ---
 

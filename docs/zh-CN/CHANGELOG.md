@@ -7,6 +7,25 @@
 
 ---
 
+## [1.0.9] - 2026-02-14
+
+### 修复
+
+- **客户端导航 / SPA 主体区空白**：点击链接后，因导航在路由变化回调完成前就
+  结束，导致主体内容有时不渲染（如 View Hybrid）。现改为在导航结束前等待所有
+  `onRouteChange` 回调完成，从而在导航完成前完成 SPA 内容渲染。
+
+### 变更
+
+- **RouteChangeCallback**：类型现允许 `void | Promise<void> | unknown`，以支持
+  异步回调（如加载模块 + 渲染）；回调通过 `Promise.resolve(callback(match))`
+  调用并被 await。
+- **notifyRouteChange**：改为 async；`handleRouteChange` 会 await
+  它，使路由变化监听器（含异步渲染）在滚动等后续逻辑前完成。
+- **许可证**：本包采用 Apache License 2.0（见 [LICENSE](../../LICENSE)）。
+
+---
+
 ## [1.0.8] - 2026-02-12
 
 ### 修复

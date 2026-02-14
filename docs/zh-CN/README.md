@@ -6,7 +6,7 @@
 [English](../../README.md) | 中文 (Chinese)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
 [![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
@@ -631,11 +631,12 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.8**（2026-02-12）
+**v1.0.9**（2026-02-14）
 
-- **修复**：当 `event.target` 为文本节点（如 Solid.js）时正确找到
-  `<a>`；拦截点击后 调用 `stopImmediatePropagation()` 避免重复处理。
-- **新增**：客户端 `debug: true` 时对点击拦截输出 `debugLog`。
+- **修复**：客户端导航现会等待路由变化回调完成后再结束，SPA 内容在导航完成前
+  完成渲染，解决点击链接后主体区空白（如 View Hybrid）。
+- **变更**：`RouteChangeCallback` 支持异步；`notifyRouteChange` 为 async 并在
+  `handleRouteChange` 中 await。许可证：Apache 2.0。
 
 详见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -649,7 +650,7 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📄 许可证
 
-MIT License - 详见 [LICENSE.md](../../LICENSE.md)
+Apache License 2.0 - 详见 [LICENSE](../../LICENSE)
 
 ---
 

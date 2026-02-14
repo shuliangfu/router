@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.9] - 2026-02-14
+
+### Fixed
+
+- **Client navigation / SPA main content blank**: After clicking a link, the
+  main content area sometimes did not render (e.g. in View Hybrid) because
+  navigation finished before the route-change callback completed. The client now
+  awaits all `onRouteChange` callbacks before ending the navigation, so SPA
+  content is rendered before the navigation completes.
+
+### Changed
+
+- **RouteChangeCallback**: Type now allows `void | Promise<void> | unknown` so
+  that async callbacks (e.g. load module + render) are supported; callbacks are
+  invoked with `Promise.resolve(callback(match))` and awaited.
+- **notifyRouteChange**: Made async; `handleRouteChange` awaits it so that
+  route-change listeners (including async render) complete before scroll and
+  other post-navigation logic run.
+- **License**: This package is licensed under Apache License 2.0 (see
+  [LICENSE](../../LICENSE)).
+
+---
+
 ## [1.0.8] - 2026-02-12
 
 ### Fixed

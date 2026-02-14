@@ -3,7 +3,7 @@
 > 一个用于浏览器的路由导航包，提供客户端路由导航功能，支持 SPA 应用的路由管理
 
 [![JSR](https://jsr.io/badges/@dreamer/router/client)](https://jsr.io/@dreamer/router/client)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../../LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../../LICENSE)
 
 [English](../../en-US/client/README.md) | 中文 (Chinese)
 
@@ -642,7 +642,7 @@ match.load = () => loadComponent(match.route.component);
 
 ## 📄 许可证
 
-MIT License - 详见 [LICENSE.md](../../../LICENSE.md)
+Apache License 2.0 - 详见 [LICENSE](../../../LICENSE)
 
 ---
 

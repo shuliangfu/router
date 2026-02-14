@@ -214,9 +214,12 @@ export interface ClientRouteMatch {
 }
 
 /**
- * 路由变化回调函数
+ * 路由变化回调函数（支持异步，导航会等待所有回调完成后再结束，避免 SPA 主体区空白）
+ * 返回值会被 Promise.resolve 包装后 await，故可返回 void | Promise<void> 或任意值
  */
-export type RouteChangeCallback = (match: ClientRouteMatch | null) => void;
+export type RouteChangeCallback = (
+  match: ClientRouteMatch | null,
+) => void | Promise<void> | unknown;
 
 /**
  * 路由守卫函数
@@ -1031,8 +1034,8 @@ export class ClientRouter {
     // 执行后置守卫
     await this.executeAfterGuards(match, previousMatch);
 
-    // 触发路由变化回调
-    this.notifyRouteChange(match);
+    // 触发路由变化回调（等待渲染完成，避免主体区空白）
+    await this.notifyRouteChange(match);
 
     // 处理滚动行为
     await this.handleScrollBehavior(match, previousMatch);
@@ -1075,11 +1078,13 @@ export class ClientRouter {
   }
 
   /**
-   * 通知路由变化
+   * 通知路由变化（等待所有异步回调完成，确保 SPA 渲染完成后再结束导航）
    */
-  private notifyRouteChange(match: ClientRouteMatch | null): void {
+  private async notifyRouteChange(
+    match: ClientRouteMatch | null,
+  ): Promise<void> {
     for (const callback of this.routeChangeCallbacks) {
-      callback(match);
+      await Promise.resolve(callback(match));
     }
   }
 
