@@ -633,13 +633,11 @@ These links are not intercepted:
 
 ## 📋 Changelog
 
-**v1.0.9** (2026-02-14)
+**v1.0.10** (2026-02-16)
 
-- **Fixed**: Client navigation now awaits route-change callbacks so SPA content
-  renders before navigation completes; prevents blank main content after
-  clicking links (e.g. View Hybrid).
-- **Changed**: `RouteChangeCallback` supports async; `notifyRouteChange` is
-  async and awaited in `handleRouteChange`. License: Apache 2.0.
+- **Added**: Client `interceptLinks` option. When `false`, `start()` does not
+  intercept link clicks so SSR/SSG can hydrate-only with full page navigation
+  for links.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 

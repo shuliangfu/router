@@ -175,6 +175,11 @@ export interface ClientRouterOptions {
   scrollBehavior?: ScrollBehaviorHandler;
   /** 是否启用详细调试日志（默认：false） */
   debug?: boolean;
+  /**
+   * 是否拦截同源 <a> 点击并做客户端导航（默认：true）。
+   * 为 false 时（如 SSR/SSG 仅 hydrate 不做客户端路由），点击链接将走浏览器默认整页跳转。
+   */
+  interceptLinks?: boolean;
 }
 
 /**
@@ -286,6 +291,7 @@ export class ClientRouter {
     basePath: string;
     scrollBehavior?: ScrollBehaviorHandler;
     debug: boolean;
+    interceptLinks: boolean;
   };
   private currentMatch: ClientRouteMatch | null = null;
   private routeChangeCallbacks: RouteChangeCallback[] = [];
@@ -318,6 +324,7 @@ export class ClientRouter {
       mode: options.mode || "history",
       scrollBehavior: options.scrollBehavior,
       debug: options.debug ?? false,
+      interceptLinks: options.interceptLinks !== false,
     };
 
     // 监听浏览器历史记录变化
@@ -341,9 +348,9 @@ export class ClientRouter {
   // ==========================================================================
 
   /**
-   * 启动路由器，开始拦截链接点击
-   * 调用此方法后，页面上所有同源 <a> 标签的点击都会被拦截，
-   * 使用客户端导航而不是页面跳转
+   * 启动路由器，开始拦截链接点击（当 interceptLinks 为 true 时）
+   * 调用此方法后，若 interceptLinks 为 true，页面上所有同源 <a> 的点击会被拦截并做客户端导航；
+   * 为 false 时（如 SSR/SSG 仅 hydrate）不注册点击拦截，链接点击走浏览器默认整页跳转。
    */
   start(): void {
     if (this.isStarted) {
@@ -351,7 +358,9 @@ export class ClientRouter {
     }
 
     this.isStarted = true;
-    this.setupClickInterceptor();
+    if (this.options.interceptLinks) {
+      this.setupClickInterceptor();
+    }
   }
 
   /**

@@ -631,12 +631,10 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.9**（2026-02-14）
+**v1.0.10**（2026-02-16）
 
-- **修复**：客户端导航现会等待路由变化回调完成后再结束，SPA 内容在导航完成前
-  完成渲染，解决点击链接后主体区空白（如 View Hybrid）。
-- **变更**：`RouteChangeCallback` 支持异步；`notifyRouteChange` 为 async 并在
-  `handleRouteChange` 中 await。许可证：Apache 2.0。
+- **新增**：客户端 `interceptLinks` 选项。为 `false` 时不拦截链接点击，SSR/SSG
+  可仅做当前页 hydrate，链接走整页跳转。
 
 详见 [CHANGELOG.md](./CHANGELOG.md)。
 

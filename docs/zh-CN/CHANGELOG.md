@@ -7,6 +7,17 @@
 
 ---
 
+## [1.0.10] - 2026-02-16
+
+### 新增
+
+- **客户端 `interceptLinks` 选项**：`ClientRouterOptions` 现支持
+  `interceptLinks?: boolean`（默认 `true`）。为 `false` 时，`start()` 不注册
+  链接点击拦截，SSR/SSG 应用可仅对当前页做 hydrate，链接点击走浏览器整页
+  跳转而非客户端路由。
+
+---
+
 ## [1.0.9] - 2026-02-14
 
 ### 修复

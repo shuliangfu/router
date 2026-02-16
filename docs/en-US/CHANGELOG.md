@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.10] - 2026-02-16
+
+### Added
+
+- **Client `interceptLinks` option**: `ClientRouterOptions` now accepts
+  `interceptLinks?: boolean` (default `true`). When `false`, `start()` does not
+  register the link click interceptor, so that SSR/SSG apps can hydrate the
+  current page only and let link clicks perform full page navigation instead of
+  client-side routing.
+
+---
+
 ## [1.0.9] - 2026-02-14
 
 ### Fixed
