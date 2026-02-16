@@ -7,7 +7,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-146%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 ---
 
@@ -91,6 +91,15 @@ import { createRouter } from "jsr:@dreamer/router/client";
   - `replace()` replace current history
   - `back()`/`forward()`/`go()` history
   - `start()` start link interception
+- **Link interception** (when `interceptLinks: true` and after `start()`):
+  - **Intercepted**: Same-origin `http:`/`https:` `<a>` clicks → client-side
+    `navigate()`. Cross-page links with hash (e.g. `/about#team`) scroll to the
+    target element after navigation.
+  - **Not intercepted**: `target="_blank"`, `download`, `data-native`, different
+    origin, non-http(s) (`mailto:`, `tel:`, `javascript:`, `blob:`, `data:`),
+    same-page anchor only (same path+search + hash, e.g. `#section`), empty
+    `href`, Ctrl/Cmd/Shift/Alt + click or non-left button. See
+    [Links Not Intercepted](#links-not-intercepted) below for the full list.
 - **Route guards**:
   - `beforeRoute` pre-guard (can block or redirect)
   - `afterRoute` post-guard
@@ -102,6 +111,8 @@ import { createRouter } from "jsr:@dreamer/router/client";
 - **Scroll behavior**:
   - Custom scroll behavior function
   - Save/restore scroll position
+  - Anchor links: cross-page links with hash (e.g. `/about#team`) are
+    intercepted and the view scrolls to the target element after navigation
 - **Prefetch**:
   - `prefetch()` preload route component
   - Component cache
@@ -554,27 +565,27 @@ type RouterMode = "history" | "hash";
 
 | Metric      | Value      |
 | ----------- | ---------- |
-| Total tests | 130        |
-| Passed      | 130        |
+| Total tests | 146        |
+| Passed      | 146        |
 | Failed      | 0          |
 | Pass rate   | 100%       |
-| Test date   | 2026-02-03 |
-| Duration    | ~31s       |
+| Test date   | 2026-02-17 |
+| Duration    | ~3s        |
 
 ### Runtime Compatibility
 
 | Runtime | Tests | Passed | Status |
 | ------- | ----- | ------ | ------ |
-| Deno    | 130   | 130    | ✅     |
-| Bun     | 130   | 130    | ✅     |
+| Deno    | 146   | 146    | ✅     |
+| Bun     | 146   | 146    | ✅     |
 
 ### Test File Coverage
 
-| Test file              | Count | Coverage                                                   |
-| ---------------------- | ----- | ---------------------------------------------------------- |
-| client-browser.test.ts | 27    | Browser: navigation, guards, link interception, history    |
-| client.test.ts         | 69    | Client unit: route matching, metadata, basePath, hash mode |
-| mod.test.ts            | 34    | Server: scan, match, redirect, middleware                  |
+| Test file              | Count | Coverage                                                               |
+| ---------------------- | ----- | ---------------------------------------------------------------------- |
+| client-browser.test.ts | 28    | Browser: navigation, guards, link interception, history                |
+| client.test.ts         | 84    | Client unit: route matching, metadata, basePath, hash mode, link types |
+| mod.test.ts            | 34    | Server: scan, match, redirect, middleware                              |
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
@@ -621,23 +632,29 @@ router.start(); // Begin intercepting <a> clicks
 
 ### Links Not Intercepted
 
-These links are not intercepted:
+These links are not intercepted (handled by the browser or left as full
+navigation):
 
 - `target="_blank"`
 - `download` attribute
 - `data-native` attribute
 - External links (different origin)
-- Ctrl/Cmd/Shift/Alt + click
+- Non-http(s) protocols: `mailto:`, `tel:`, `javascript:`, `blob:`, `data:`
+- Same-page anchor only (same pathname + search, link has hash; e.g. `#section`)
+- Empty or missing `href`
+- Ctrl/Cmd/Shift/Alt + click or non-left button
 
 ---
 
 ## 📋 Changelog
 
-**v1.0.10** (2026-02-16)
+**v1.0.11** (2026-02-17)
 
-- **Added**: Client `interceptLinks` option. When `false`, `start()` does not
-  intercept link clicks so SSR/SSG can hydrate-only with full page navigation
-  for links.
+- **Added**: Anchor link handling (history mode: getPathname includes hash;
+  scroll to target element after cross-page navigation). Link interception
+  limited to http(s); mailto/tel/javascript/blob/data not intercepted. Unit
+  tests for link interception (14 cases).
+- **Changed**: Docs: link interception subsection, test report 146 tests.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 

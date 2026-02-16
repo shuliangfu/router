@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.11] - 2026-02-17
+
+### Added
+
+- **Anchor link handling**: In history mode, `getPathname()` now includes
+  `location.hash` so that navigation to a path with hash (e.g. `/about#team`)
+  produces a match with `hash`; after navigation, `handleScrollBehavior` scrolls
+  to the element with the matching `id` (cross-page anchor).
+- **Link interception — protocol filter**: Only `http:` and `https:` links are
+  intercepted. Links with `mailto:`, `tel:`, `javascript:`, `blob:`, `data:` or
+  other non-http(s) protocols are no longer intercepted and are left to the
+  browser.
+- **Unit tests for link interception**: 14 tests covering same-page anchor,
+  same-page anchor with path+search+hash, `target="_blank"`, `download`,
+  `data-native`, `mailto:`, `tel:`, `javascript:`, `blob:`, `data:`,
+  cross-origin, empty `href`, same-origin intercept, and cross-page hash
+  intercept.
+
+### Changed
+
+- **Docs**: README and zh-CN README add a "Link interception" subsection (what
+  is intercepted / not intercepted). Test report and README test stats updated
+  to 146 tests (28 + 84 + 34).
+
+---
+
 ## [1.0.10] - 2026-02-16
 
 ### Added

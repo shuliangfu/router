@@ -7,6 +7,29 @@
 
 ---
 
+## [1.0.11] - 2026-02-17
+
+### 新增
+
+- **锚点链接处理**：History 模式下 `getPathname()` 现包含
+  `location.hash`，导航到带 hash 的路径（如 `/about#team`）会得到带 `hash`
+  的匹配结果；导航完成后 `handleScrollBehavior` 会滚动到对应 `id`
+  的元素（跨页锚点）。
+- **链接拦截 — 协议过滤**：仅拦截 `http:` 与 `https:`
+  链接。`mailto:`、`tel:`、`javascript:`、`blob:`、`data:` 等非 http(s)
+  协议不再拦截，交由浏览器处理。
+- **链接拦截单元测试**：14 项测试覆盖同页锚点、path+search+hash
+  同页锚点、`target="_blank"`、`download`、`data-native`、`mailto:`、`tel:`、`javascript:`、`blob:`、`data:`、跨域、空
+  `href`、同源拦截、跨页 hash 拦截。
+
+### 变更
+
+- **文档**：README 与 zh-CN README
+  增加「链接拦截」小节（会拦截/不拦截的链接）。测试报告与 README 测试统计更新为
+  146 项（28 + 84 + 34）。
+
+---
+
 ## [1.0.10] - 2026-02-16
 
 ### 新增

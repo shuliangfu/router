@@ -13,8 +13,8 @@
  * - 路由元数据：为路由添加自定义元数据
  * - 预取功能：提前加载目标路由组件
  * - 基础路径：支持部署在子路径下
- * - Hash 模式：支持 hash 路由
  * - 加载状态：路由切换时的 loading 状态
+ * - Hash 模式：支持 hash 路由
  *
  * @example
  * ```typescript
@@ -105,6 +105,9 @@ interface BrowserGlobalThis {
       listener: (event: Event) => void,
       options?: boolean | { capture?: boolean },
     ) => void;
+    getElementById?: (
+      id: string,
+    ) => { scrollIntoView?: (options?: { behavior?: string }) => void } | null;
     title: string;
   };
   scrollTo?: (
@@ -929,7 +932,7 @@ export class ClientRouter {
         return;
       }
       const href = anchor.getAttribute("href");
-      if (!href) {
+      if (!href || href.trim() === "") {
         return;
       }
 
@@ -949,16 +952,21 @@ export class ClientRouter {
         return;
       }
 
-      // 检查同源
+      // 检查同源且仅拦截 http(s)，不拦截 mailto:、tel:、javascript:、blob:、data:、file: 等
       try {
         const linkUrl = new URL(href, browserGlobal.location?.origin);
         const currentOrigin = browserGlobal.location?.origin;
 
+        if (
+          linkUrl.protocol !== "http:" && linkUrl.protocol !== "https:"
+        ) {
+          return;
+        }
         if (linkUrl.origin !== currentOrigin) {
           return;
         }
 
-        // 检查 hash 链接
+        // 检查 hash 链接（同页锚点交给浏览器处理）
         if (
           linkUrl.pathname === browserGlobal.location?.pathname &&
           linkUrl.search === browserGlobal.location?.search &&
@@ -1186,6 +1194,27 @@ export class ClientRouter {
       }
     }
 
+    // 锚点链接：若目标路由带 hash，则滚动到对应 id 元素（同页或跨页锚点）
+    if (to.hash && browserGlobal.document?.getElementById) {
+      const id = to.hash.startsWith("#") ? to.hash.slice(1) : to.hash;
+      if (id) {
+        const el = browserGlobal.document.getElementById(id);
+        if (el?.scrollIntoView) {
+          const raf = (globalThis as unknown as {
+            requestAnimationFrame?: (cb: () => void) => number;
+          }).requestAnimationFrame;
+          if (raf) {
+            raf(() => {
+              el.scrollIntoView?.({ behavior: "auto" });
+            });
+          } else {
+            el.scrollIntoView?.({ behavior: "auto" });
+          }
+          return;
+        }
+      }
+    }
+
     // 默认：有保存的位置则恢复，否则滚动到顶部
     if (savedPosition) {
       browserGlobal.scrollTo({
@@ -1213,9 +1242,10 @@ export class ClientRouter {
       return hash ? hash.slice(1) : "/";
     }
 
-    // History 模式
-    const { pathname, search } = browserGlobal.location;
-    return search ? `${pathname}${search}` : pathname;
+    // History 模式：包含 pathname、search、hash，以便锚点导航后能匹配到 hash 并滚动到目标
+    const { pathname, search, hash } = browserGlobal.location;
+    const pathAndSearch = search ? `${pathname}${search}` : pathname;
+    return hash ? `${pathAndSearch}${hash}` : pathAndSearch;
   }
 
   /**

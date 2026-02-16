@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-130%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-146%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -89,6 +89,14 @@ import { createRouter } from "jsr:@dreamer/router/client";
   - `replace()` 替换当前历史记录
   - `back()`/`forward()`/`go()` 历史操作
   - `start()` 启动链接拦截
+- **链接拦截**（当 `interceptLinks: true` 且在调用 `start()` 之后）：
+  - **会拦截**：同源 `http:`/`https:` 的 `<a>` 点击 → 客户端
+    `navigate()`。跨页带 hash 的链接（如
+    `/about#team`）在导航完成后会滚动到目标元素。
+  - **不拦截**：`target="_blank"`、`download`、`data-native`、不同源、非
+    http(s)（`mailto:`、`tel:`、`javascript:`、`blob:`、`data:`）、仅同页锚点（path+search
+    相同且带 hash，如 `#section`）、空 `href`、Ctrl/Cmd/Shift/Alt
+    或非左键点击。完整列表见下方 [不拦截的链接](#不拦截的链接)。
 - **路由守卫**：
   - `beforeRoute` 前置守卫（可阻止导航或重定向）
   - `afterRoute` 后置守卫
@@ -100,6 +108,8 @@ import { createRouter } from "jsr:@dreamer/router/client";
 - **滚动行为管理**：
   - 自定义滚动行为函数
   - 保存/恢复滚动位置
+  - 锚点链接：跨页带 hash 的链接（如
+    `/about#team`）会被拦截，导航完成后自动滚动到目标元素
 - **预取功能**：
   - `prefetch()` 提前加载目标路由组件
   - 组件缓存
@@ -552,27 +562,27 @@ type RouterMode = "history" | "hash";
 
 | 指标     | 数值       |
 | -------- | ---------- |
-| 总测试数 | 130        |
-| 通过     | 130        |
+| 总测试数 | 146        |
+| 通过     | 146        |
 | 失败     | 0          |
 | 通过率   | 100%       |
-| 测试时间 | 2026-02-03 |
-| 执行时间 | ~31s       |
+| 测试时间 | 2026-02-17 |
+| 执行时间 | ~3s        |
 
 ### 运行时兼容性
 
 | 运行时 | 测试数 | 通过 | 状态 |
 | ------ | ------ | ---- | ---- |
-| Deno   | 130    | 130  | ✅   |
-| Bun    | 130    | 130  | ✅   |
+| Deno   | 146    | 146  | ✅   |
+| Bun    | 146    | 146  | ✅   |
 
 ### 测试文件覆盖
 
-| 测试文件               | 测试数量 | 覆盖内容                                              |
-| ---------------------- | -------- | ----------------------------------------------------- |
-| client-browser.test.ts | 27       | 浏览器测试：导航、守卫、链接拦截、历史操作            |
-| client.test.ts         | 69       | 客户端单元测试：路由匹配、元数据、basePath、hash 模式 |
-| mod.test.ts            | 34       | 服务端测试：扫描、匹配、重定向、中间件                |
+| 测试文件               | 测试数量 | 覆盖内容                                                   |
+| ---------------------- | -------- | ---------------------------------------------------------- |
+| client-browser.test.ts | 28       | 浏览器测试：导航、守卫、链接拦截、历史操作                 |
+| client.test.ts         | 84       | 客户端单元测试：路由匹配、元数据、basePath、hash、链接形式 |
+| mod.test.ts            | 34       | 服务端测试：扫描、匹配、重定向、中间件                     |
 
 详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
@@ -619,22 +629,27 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ### 不拦截的链接
 
-以下链接不会被客户端路由器拦截：
+以下链接不会被客户端路由器拦截（由浏览器处理或保持整页跳转）：
 
 - 带 `target="_blank"` 属性
 - 带 `download` 属性
 - 带 `data-native` 属性
 - 外部链接（不同源）
-- 按住 Ctrl/Cmd/Shift/Alt 键点击
+- 非 http(s) 协议：`mailto:`、`tel:`、`javascript:`、`blob:`、`data:`
+- 仅同页锚点（pathname + search 相同且链接带 hash，如 `#section`）
+- 空或缺失的 `href`
+- 按住 Ctrl/Cmd/Shift/Alt 或非左键点击
 
 ---
 
 ## 📋 变更日志
 
-**v1.0.10**（2026-02-16）
+**v1.0.11**（2026-02-17）
 
-- **新增**：客户端 `interceptLinks` 选项。为 `false` 时不拦截链接点击，SSR/SSG
-  可仅做当前页 hydrate，链接走整页跳转。
+- **新增**：锚点链接处理（history 模式下 getPathname 含
+  hash；跨页导航后滚动到目标元素）。链接仅拦截
+  http(s)；mailto/tel/javascript/blob/data 不拦截。链接拦截单元测试（14 项）。
+- **变更**：文档增加链接拦截小节，测试报告 146 项。
 
 详见 [CHANGELOG.md](./CHANGELOG.md)。
 

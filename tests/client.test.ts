@@ -4,7 +4,7 @@
  * 测试 @dreamer/router/client 的所有功能
  */
 
-import { describe, expect, it } from "@dreamer/test";
+import { afterEach, beforeEach, describe, expect, it } from "@dreamer/test";
 import {
   type ClientRoute,
   type ClientRouteMatch,
@@ -478,6 +478,273 @@ describe("ClientRouter - start 启动方法", () => {
     // 销毁后应该能重新启动
     router.start();
     expect(router).toBeDefined();
+  });
+});
+
+/**
+ * 链接拦截 - 特殊链接形式
+ * 通过 mock document/location 捕获 click 处理器，验证各类链接是否被正确拦截或放行
+ */
+describe("ClientRouter - 链接拦截 (特殊链接形式)", () => {
+  const origin = "https://example.com";
+  let mockLocation: {
+    origin: string;
+    pathname: string;
+    search: string;
+    hash: string;
+    protocol: string;
+    host: string;
+  };
+  let capturedClickHandler: ((e: Event) => void) | null = null;
+  let savedLocation: unknown;
+  let savedDocument: unknown;
+  let savedHistory: unknown;
+
+  /** 创建模拟的 <a> 元素 */
+  function createMockAnchor(attrs: {
+    href: string;
+    target?: string;
+    download?: boolean;
+    dataNative?: boolean;
+  }) {
+    return {
+      tagName: "A",
+      nodeType: 1,
+      parentNode: null as unknown,
+      getAttribute: (name: string): string | null => {
+        if (name === "href") return attrs.href;
+        if (name === "target") return attrs.target ?? null;
+        return null;
+      },
+      hasAttribute: (name: string): boolean => {
+        if (name === "download") return attrs.download ?? false;
+        if (name === "data-native") return attrs.dataNative ?? false;
+        return false;
+      },
+    };
+  }
+
+  /** 创建模拟的点击事件，返回 { event, preventDefaultCalled } */
+  function createMockClickEvent(
+    anchor: ReturnType<typeof createMockAnchor>,
+  ): { event: Event; preventDefaultCalled: () => boolean } {
+    let prevented = false;
+    const event = {
+      target: anchor,
+      button: 0,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      preventDefault: () => {
+        prevented = true;
+      },
+      stopImmediatePropagation: () => {},
+    } as unknown as Event;
+    return {
+      event,
+      preventDefaultCalled: () => prevented,
+    };
+  }
+
+  beforeEach(() => {
+    savedLocation = (globalThis as unknown as Record<string, unknown>).location;
+    savedDocument = (globalThis as unknown as Record<string, unknown>).document;
+    savedHistory = (globalThis as unknown as Record<string, unknown>).history;
+
+    mockLocation = {
+      origin,
+      pathname: "/",
+      search: "",
+      hash: "",
+      protocol: "https:",
+      host: "example.com",
+    };
+    capturedClickHandler = null;
+
+    (globalThis as unknown as Record<string, unknown>).location =
+      mockLocation as unknown;
+    (globalThis as unknown as Record<string, unknown>).document = {
+      addEventListener: (
+        type: string,
+        handler: (e: Event) => void,
+        _options?: boolean | { capture?: boolean },
+      ) => {
+        if (type === "click") capturedClickHandler = handler;
+      },
+      removeEventListener: () => {},
+    };
+    (globalThis as unknown as Record<string, unknown>).history = {
+      pushState: () => {},
+      replaceState: () => {},
+      go: () => {},
+      state: null,
+    };
+  });
+
+  afterEach(() => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    g.location = savedLocation;
+    g.document = savedDocument;
+    g.history = savedHistory;
+  });
+
+  /** 启动路由器并返回已注册的 click 处理器（无则 null） */
+  function startAndGetClickHandler(): ((e: Event) => void) | null {
+    const router = createRouter({
+      routes: testRoutes,
+      interceptLinks: true,
+    });
+    router.start();
+    return capturedClickHandler;
+  }
+
+  it("同页锚点（仅 hash）不应拦截", () => {
+    // href="#section" 解析后 pathname 来自 base（origin 即 /），故当前页也设为 /
+    mockLocation.pathname = "/";
+    mockLocation.search = "";
+    mockLocation.hash = "";
+    const handler = startAndGetClickHandler();
+    if (!handler) {
+      return; // 无 DOM 时跳过
+    }
+    const anchor = createMockAnchor({ href: "#section" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("同页锚点（pathname+search 相同且带 hash）不应拦截", () => {
+    mockLocation.pathname = "/about";
+    mockLocation.search = "?tab=1";
+    mockLocation.hash = "";
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({
+      href: "https://example.com/about?tab=1#section",
+    });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("target=_blank 不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({
+      href: "/about",
+      target: "_blank",
+    });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("download 属性不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "/file.pdf", download: true });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("data-native 属性不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({
+      href: "/about",
+      dataNative: true,
+    });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("mailto: 不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "mailto:test@example.com" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("tel: 不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "tel:+8613800138000" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("javascript: 不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "javascript:void(0)" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("blob: 不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({
+      href: "blob:https://example.com/uuid-here",
+    });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("data: 不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "data:text/html,<p>hi</p>" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("跨域链接不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "https://other.com/about" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("空 href 不应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(false);
+  });
+
+  it("同源普通 http(s) 链接应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "/about" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(true);
+  });
+
+  it("跨页带 hash 的链接应拦截", () => {
+    mockLocation.pathname = "/";
+    mockLocation.search = "";
+    mockLocation.hash = "";
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "/about#team" });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(true);
   });
 });
 
