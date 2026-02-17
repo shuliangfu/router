@@ -1,0 +1,7 @@
+{
+  "error": {
+    "scanRoutesFailed": "扫描路由文件失败: {message}",
+    "missingSpecialFile": "缺少必需的特殊文件: {expected}（必须在 {routesDir} 目录下）",
+    "loadApiHandlerFailed": "加载 API 处理函数失败: {filePath}, {message}"
+  }
+}

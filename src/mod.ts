@@ -35,6 +35,8 @@
 
 // 导入 runtime-adapter 提供的文件系统 API（兼容 Deno 和 Bun）
 import { cwd, dirname, join, readdir, stat } from "@dreamer/runtime-adapter";
+// 服务端 i18n（错误与日志文案）
+import { $t, type Locale } from "./i18n.ts";
 
 // ============================================================================
 // 类型定义
@@ -110,6 +112,8 @@ export interface RouterOptions {
   skipAppValidation?: boolean;
   /** 是否启用详细调试日志（默认：false） */
   debug?: boolean;
+  /** 服务端文案语言（如 "en-US"、"zh-CN"）；不传则从环境 LANGUAGE/LC_ALL/LANG 检测 */
+  lang?: Locale;
 }
 
 /**
@@ -189,7 +193,7 @@ export class Router {
     & Required<
       Omit<
         RouterOptions,
-        "redirects" | "middlewares" | "skipAppValidation" | "debug"
+        "redirects" | "middlewares" | "skipAppValidation" | "debug" | "lang"
       >
     >
     & {
@@ -197,6 +201,7 @@ export class Router {
       middlewares: MiddlewareFunction[];
       skipAppValidation: boolean;
       debug: boolean;
+      lang?: Locale;
     };
   private specialFiles: Map<string, string> = new Map();
   private moduleCache: Map<string, any> = new Map();
@@ -215,6 +220,7 @@ export class Router {
       middlewares: options.middlewares || [],
       skipAppValidation: options.skipAppValidation || false,
       debug: options.debug ?? false,
+      lang: options.lang,
     };
   }
 
@@ -252,10 +258,9 @@ export class Router {
     try {
       await this.scanDirectory(this.options.routesDir, "");
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       throw new Error(
-        `扫描路由文件失败: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t("error.scanRoutesFailed", { message }, this.options.lang),
       );
     }
 
@@ -263,7 +268,10 @@ export class Router {
     if (!this.options.skipAppValidation && !this.specialFiles.has("_app")) {
       const expected = this.getExpectedAppFile();
       throw new Error(
-        `缺少必需的特殊文件: ${expected}（必须在 ${this.options.routesDir} 目录下）`,
+        $t("error.missingSpecialFile", {
+          expected,
+          routesDir: this.options.routesDir,
+        }, this.options.lang),
       );
     }
   }
@@ -971,10 +979,13 @@ export class Router {
         return Object.keys(handlers).length > 0 ? handlers : null;
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.warn(
-        `加载 API 处理函数失败: ${filePath}, ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        $t(
+          "error.loadApiHandlerFailed",
+          { filePath, message },
+          this.options.lang,
+        ),
       );
       return null;
     }

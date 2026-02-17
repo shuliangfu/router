@@ -7,6 +7,24 @@
 
 ---
 
+## [1.0.12] - 2026-02-17
+
+### 新增
+
+- **服务端 i18n**：`RouterOptions` 支持可选 `lang`（如
+  `"en-US"`、`"zh-CN"`）。不传时从环境变量 `LANGUAGE` / `LC_ALL` / `LANG`
+  自动检测。新增 `src/i18n.ts` 与
+  `src/locales/en-US.json`、`zh-CN.json`。三处服务端文案已翻译：扫描路由失败、缺少特殊文件、加载
+  API 处理函数失败。
+
+### 变更
+
+- **发布包含**：`publish.include` 改为使用 glob
+  `src/**/*.ts`、`src/**/*.json`（以及
+  `LICENSE`、`NOTICE`、`README.md`）便于维护。
+
+---
+
 ## [1.0.11] - 2026-02-17
 
 ### 新增

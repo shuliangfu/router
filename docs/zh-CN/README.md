@@ -644,12 +644,12 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.11**（2026-02-17）
+**v1.0.12**（2026-02-17）
 
-- **新增**：锚点链接处理（history 模式下 getPathname 含
-  hash；跨页导航后滚动到目标元素）。链接仅拦截
-  http(s)；mailto/tel/javascript/blob/data 不拦截。链接拦截单元测试（14 项）。
-- **变更**：文档增加链接拦截小节，测试报告 146 项。
+- **新增**：服务端 i18n，RouterOptions 支持可选
+  `lang`；不传时从环境变量自动检测。新增 i18n 模块与 en-US/zh-CN
+  文案，服务端错误与日志已翻译。
+- **变更**：发布包含改为使用 glob `src/**/*.ts`、`src/**/*.json`。
 
 详见 [CHANGELOG.md](./CHANGELOG.md)。
 

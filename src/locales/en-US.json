@@ -1,0 +1,7 @@
+{
+  "error": {
+    "scanRoutesFailed": "Failed to scan route files: {message}",
+    "missingSpecialFile": "Missing required special file: {expected} (must be under {routesDir})",
+    "loadApiHandlerFailed": "Failed to load API handler: {filePath}, {message}"
+  }
+}

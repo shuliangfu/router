@@ -648,13 +648,12 @@ navigation):
 
 ## 📋 Changelog
 
-**v1.0.11** (2026-02-17)
+**v1.0.12** (2026-02-17)
 
-- **Added**: Anchor link handling (history mode: getPathname includes hash;
-  scroll to target element after cross-page navigation). Link interception
-  limited to http(s); mailto/tel/javascript/blob/data not intercepted. Unit
-  tests for link interception (14 cases).
-- **Changed**: Docs: link interception subsection, test report 146 tests.
+- **Added**: Server-side i18n: optional `lang` in RouterOptions; auto-detect
+  from env when omitted. New i18n module and en-US/zh-CN locales for server
+  error and log messages.
+- **Changed**: Publish include uses globs `src/**/*.ts` and `src/**/*.json`.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 

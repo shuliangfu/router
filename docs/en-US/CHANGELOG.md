@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.12] - 2026-02-17
+
+### Added
+
+- **Server-side i18n**: Optional `lang` in `RouterOptions` (e.g. `"en-US"`,
+  `"zh-CN"`). When omitted, locale is auto-detected from env (`LANGUAGE` /
+  `LC_ALL` / `LANG`). New `src/i18n.ts` and `src/locales/en-US.json`,
+  `zh-CN.json`. Three server messages are now translated: scan routes failed,
+  missing special file, load API handler failed.
+
+### Changed
+
+- **Publish include**: `publish.include` uses globs `src/**/*.ts` and
+  `src/**/*.json` (plus `LICENSE`, `NOTICE`, `README.md`) for maintainability.
+
+---
+
 ## [1.0.11] - 2026-02-17
 
 ### Added
