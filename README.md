@@ -648,12 +648,8 @@ navigation):
 
 ## 📋 Changelog
 
-**v1.0.12** (2026-02-17)
-
-- **Added**: Server-side i18n: optional `lang` in RouterOptions; auto-detect
-  from env when omitted. New i18n module and en-US/zh-CN locales for server
-  error and log messages.
-- **Changed**: Publish include uses globs `src/**/*.ts` and `src/**/*.json`.
+**v1.0.13** (2026-02-18): i18n init at entry only (`initRouterI18n()` in mod);
+`$t()` no longer calls ensure/init internally.
 
 See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
 

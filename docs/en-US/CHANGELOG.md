@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.13] - 2026-02-18
+
+### Changed
+
+- **i18n**: Init at entry only; `initRouterI18n()` is called once in `mod.ts`.
+  `$t()` no longer calls `ensureRouterI18n()` or sets locale internally.
+
+---
+
 ## [1.0.12] - 2026-02-17
 
 ### Added
