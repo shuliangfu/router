@@ -36,9 +36,9 @@
 // 导入 runtime-adapter 提供的文件系统 API（兼容 Deno 和 Bun）
 import { cwd, dirname, join, readdir, stat } from "@dreamer/runtime-adapter";
 // 服务端 i18n（错误与日志文案）
-import { $t, initRouterI18n, type Locale } from "./i18n.ts";
+import { $tr, initRouterI18n, type Locale } from "./i18n.ts";
 
-// 入口处初始化 router i18n（加载翻译并设置当前 locale，$t 内不再做 ensure/init）
+// 入口处初始化 router i18n（加载翻译并设置当前 locale，$tr 内不再做 ensure/init）
 initRouterI18n();
 
 // ============================================================================
@@ -263,7 +263,7 @@ export class Router {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
-        $t("error.scanRoutesFailed", { message }, this.options.lang),
+        $tr("error.scanRoutesFailed", { message }, this.options.lang),
       );
     }
 
@@ -271,7 +271,7 @@ export class Router {
     if (!this.options.skipAppValidation && !this.specialFiles.has("_app")) {
       const expected = this.getExpectedAppFile();
       throw new Error(
-        $t("error.missingSpecialFile", {
+        $tr("error.missingSpecialFile", {
           expected,
           routesDir: this.options.routesDir,
         }, this.options.lang),
@@ -984,7 +984,7 @@ export class Router {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(
-        $t(
+        $tr(
           "error.loadApiHandlerFailed",
           { filePath, message },
           this.options.lang,

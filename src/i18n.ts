@@ -2,14 +2,13 @@
  * @module @dreamer/router/i18n
  *
  * Server-side i18n for @dreamer/router: error and log messages.
- * Optional `lang`; when not passed, locale is auto-detected from env
- * (LANGUAGE/LC_ALL/LANG).
+ * Uses $tr + module instance, no install(); locale auto-detected from env
+ * (LANGUAGE/LC_ALL/LANG) when not set.
  */
 
 import {
-  $i18n,
-  getGlobalI18n,
-  getI18n,
+  createI18n,
+  type I18n,
   type TranslationData,
   type TranslationParams,
 } from "@dreamer/i18n";
@@ -25,7 +24,13 @@ export const DEFAULT_LOCALE: Locale = "en-US";
 
 const ROUTER_LOCALES: Locale[] = ["en-US", "zh-CN"];
 
-let routerTranslationsLoaded = false;
+const LOCALE_DATA: Record<string, TranslationData> = {
+  "en-US": enUS as TranslationData,
+  "zh-CN": zhCN as TranslationData,
+};
+
+/** Module-scoped i18n instance for router; not installed globally. */
+let routerI18n: I18n | null = null;
 
 /**
  * Detect locale (server-side): LANGUAGE > LC_ALL > LANG.
@@ -49,41 +54,39 @@ export function detectLocale(): Locale {
 }
 
 /**
- * Load router translations into the current I18n instance (once).
- */
-export function ensureRouterI18n(): void {
-  if (routerTranslationsLoaded) return;
-  const i18n = getGlobalI18n() ?? getI18n();
-  i18n.loadTranslations("en-US", enUS as TranslationData);
-  i18n.loadTranslations("zh-CN", zhCN as TranslationData);
-  routerTranslationsLoaded = true;
-}
-
-/**
- * Load translations and set current locale. Call once at entry (e.g. mod).
+ * Create router i18n instance and set locale. Call once at entry (e.g. mod).
+ * Does not call install(); uses module instance only.
  */
 export function initRouterI18n(): void {
-  ensureRouterI18n();
-  $i18n.setLocale(detectLocale());
+  if (routerI18n) return;
+  const i18n = createI18n({
+    defaultLocale: DEFAULT_LOCALE,
+    fallbackBehavior: "default",
+    locales: [...ROUTER_LOCALES],
+    translations: LOCALE_DATA as Record<string, TranslationData>,
+  });
+  i18n.setLocale(detectLocale());
+  routerI18n = i18n;
 }
 
 /**
- * Translate by key (server-side). When lang is not passed, uses current locale (set at entry).
- * Do not call ensure/init inside $t; call initRouterI18n() at entry.
+ * Translate by key (server-side). Uses module instance; when lang is not passed, uses current locale.
+ * When init not called, returns key.
  */
-export function $t(
+export function $tr(
   key: string,
-  params?: TranslationParams,
+  params?: Record<string, string | number>,
   lang?: Locale,
 ): string {
+  if (!routerI18n) return key;
   if (lang !== undefined) {
-    const prev = $i18n.getLocale();
-    $i18n.setLocale(lang);
+    const prev = routerI18n.getLocale();
+    routerI18n.setLocale(lang);
     try {
-      return $i18n.t(key, params);
+      return routerI18n.t(key, params as TranslationParams);
     } finally {
-      $i18n.setLocale(prev);
+      routerI18n.setLocale(prev);
     }
   }
-  return $i18n.t(key, params);
+  return routerI18n.t(key, params as TranslationParams);
 }
