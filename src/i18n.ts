@@ -53,11 +53,8 @@ export function detectLocale(): Locale {
   return "en-US";
 }
 
-/**
- * Create router i18n instance and set locale. Call once at entry (e.g. mod).
- * Does not call install(); uses module instance only.
- */
-export function initRouterI18n(): void {
+/** 内部初始化，导入 i18n 时自动执行，不导出 */
+function initRouterI18n(): void {
   if (routerI18n) return;
   const i18n = createI18n({
     defaultLocale: DEFAULT_LOCALE,
@@ -69,6 +66,8 @@ export function initRouterI18n(): void {
   routerI18n = i18n;
 }
 
+initRouterI18n();
+
 /**
  * Translate by key (server-side). Uses module instance; when lang is not passed, uses current locale.
  * When init not called, returns key.
@@ -78,6 +77,7 @@ export function $tr(
   params?: Record<string, string | number>,
   lang?: Locale,
 ): string {
+  if (!routerI18n) initRouterI18n();
   if (!routerI18n) return key;
   if (lang !== undefined) {
     const prev = routerI18n.getLocale();

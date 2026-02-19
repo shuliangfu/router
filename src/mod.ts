@@ -36,10 +36,7 @@
 // 导入 runtime-adapter 提供的文件系统 API（兼容 Deno 和 Bun）
 import { cwd, dirname, join, readdir, stat } from "@dreamer/runtime-adapter";
 // 服务端 i18n（错误与日志文案）
-import { $tr, initRouterI18n, type Locale } from "./i18n.ts";
-
-// 入口处初始化 router i18n（加载翻译并设置当前 locale，$tr 内不再做 ensure/init）
-initRouterI18n();
+import { $tr, type Locale } from "./i18n.ts";
 
 // ============================================================================
 // 类型定义

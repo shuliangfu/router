@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.15] - 2026-02-19
+
+### Changed
+
+- **i18n**: i18n now auto-initializes when the module is loaded.
+  `initRouterI18n` is no longer exported; the main entry no longer imports or
+  calls it. The translation function `$tr` initializes i18n on first use if not
+  yet initialized. Use `setRouterLocale` when you need to set the locale for
+  router messages.
+- **Dependencies**: Bumped `@dreamer/test` to ^1.0.11,
+  `@dreamer/runtime-adapter` to ^1.0.15, `@dreamer/esbuild` to ^1.0.30.
+
+---
+
 ## [1.0.14] - 2026-02-19
 
 ### Changed

@@ -12,9 +12,12 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 **Changelog**: [English](./docs/en-US/CHANGELOG.md) |
 [中文 (Chinese)](./docs/zh-CN/CHANGELOG.md)
 
-### [1.0.14] - 2026-02-19
+### [1.0.15] - 2026-02-19
 
-- **Changed**: i18n translation method `$t` → `$tr`.
+- **Changed**: i18n auto-initializes on module load; `initRouterI18n` no longer
+  exported. Dependencies bumped: @dreamer/test ^1.0.11, @dreamer/runtime-adapter
+  ^1.0.15, @dreamer/esbuild ^1.0.30. Full history:
+  [Changelog](./docs/en-US/CHANGELOG.md)
 
 ---
 

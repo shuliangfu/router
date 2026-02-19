@@ -644,10 +644,9 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.13**（2026-02-18）：i18n 仅在入口初始化（mod 中调用
-`initRouterI18n()`）；`$t()` 内不再执行 ensure/init。
-
-详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.0.15**（2026-02-19）：i18n 在模块加载时自动初始化，`initRouterI18n`
+不再导出； 依赖升级：@dreamer/test ^1.0.11、@dreamer/runtime-adapter ^1.0.15、
+@dreamer/esbuild ^1.0.30。详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
