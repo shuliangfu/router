@@ -56,7 +56,7 @@ jobs:
       - name: Test (Deno, macOS)
         run: deno test -A --no-check tests/
 
-  # Windows 上 Deno 的 node:child_process spawn 有已知问题，易报 "The handle is invalid (os error 6)"（Playwright 启动 Chromium 时触发）。通过固定 PLAYWRIGHT_BROWSERS_PATH 安装到工作区目录并加 --retry 缓解。
+  # Windows 上 Deno 的 node:child_process spawn 有已知问题，易报 "The handle is invalid (os error 6)"（Playwright 启动 Chromium 时触发）。通过固定 PLAYWRIGHT_BROWSERS_PATH 安装到工作区目录缓解。
   test-windows:
     runs-on: windows-latest
     env:
@@ -83,7 +83,7 @@ jobs:
         run: deno lint
 
       - name: Test (Deno, Windows)
-        run: deno test -A --no-check tests/ --retry=2
+        run: deno test -A --no-check tests/
 
   # --- Bun: Linux ---
   test-linux-bun:
