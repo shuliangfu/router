@@ -369,6 +369,115 @@ describe("Router", () => {
       expect(errorFile).toBeUndefined();
     });
   });
+
+  describe("getLayoutPathsForPath / getLayoutKeysForPath (nested layout)", () => {
+    it("无根 _layout 时 getLayoutPathsForPath 与 getLayoutKeysForPath 应返回空数组", async () => {
+      await setupTestRoutes();
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      expect(router.getLayoutPathsForPath("/")).toEqual([]);
+      expect(router.getLayoutPathsForPath("/bgb-x-admin")).toEqual([]);
+      expect(router.getLayoutKeysForPath("/")).toEqual([]);
+      expect(router.getLayoutKeysForPath("/bgb-x-admin")).toEqual([]);
+    });
+
+    it("仅有根 _layout 时根路径应返回单元素数组", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "_layout.tsx"),
+        "export default ({ children }: { children: any }) => children;",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const rootPaths = router.getLayoutPathsForPath("/");
+      const rootKeys = router.getLayoutKeysForPath("/");
+      expect(rootPaths.length).toBe(1);
+      expect(rootKeys).toEqual(["_layout"]);
+      expect(rootPaths[0]).toContain("_layout");
+      expect(rootPaths[0]).toContain("test-routes");
+    });
+
+    it("仅有根 _layout 时子路径应只返回根 layout", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "_layout.tsx"),
+        "export default ({ children }: { children: any }) => children;",
+      );
+      await mkdir(join(testRoutesDir, "bgb-x-admin"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "bgb-x-admin", "index.tsx"),
+        "export default () => <div>BGB Admin</div>;",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const paths = router.getLayoutPathsForPath("/bgb-x-admin");
+      const keys = router.getLayoutKeysForPath("/bgb-x-admin");
+      expect(paths.length).toBe(1);
+      expect(keys).toEqual(["_layout"]);
+    });
+
+    it("有根 _layout 与 bgb-x-admin/_layout 时应返回从外到内的链", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "_layout.tsx"),
+        "export default ({ children }: { children: any }) => children;",
+      );
+      await mkdir(join(testRoutesDir, "bgb-x-admin"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "bgb-x-admin", "_layout.tsx"),
+        "export default ({ children }: { children: any }) => children;",
+      );
+      await writeTextFile(
+        join(testRoutesDir, "bgb-x-admin", "index.tsx"),
+        "export default () => <div>BGB Admin</div>;",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const rootKeys = router.getLayoutKeysForPath("/");
+      expect(rootKeys).toEqual(["_layout"]);
+
+      const nestedKeys = router.getLayoutKeysForPath("/bgb-x-admin");
+      expect(nestedKeys).toEqual(["_layout", "bgb-x-admin/_layout"]);
+
+      const nestedPaths = router.getLayoutPathsForPath("/bgb-x-admin");
+      expect(nestedPaths.length).toBe(2);
+      expect(nestedPaths[0]).toContain("_layout");
+      expect(nestedPaths[1]).toContain("bgb-x-admin");
+      expect(nestedPaths[1]).toContain("_layout");
+    });
+
+    it("pathname 无前导/尾随斜杠时应与规范化后一致", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "_layout.tsx"),
+        "export default ({ children }: { children: any }) => children;",
+      );
+      await mkdir(join(testRoutesDir, "bgb-x-admin"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "bgb-x-admin", "_layout.tsx"),
+        "export default ({ children }: { children: any }) => children;",
+      );
+      await writeTextFile(
+        join(testRoutesDir, "bgb-x-admin", "index.tsx"),
+        "export default () => <div>BGB Admin</div>;",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      expect(router.getLayoutKeysForPath("bgb-x-admin")).toEqual([
+        "_layout",
+        "bgb-x-admin/_layout",
+      ]);
+      expect(router.getLayoutKeysForPath("bgb-x-admin/")).toEqual([
+        "_layout",
+        "bgb-x-admin/_layout",
+      ]);
+    });
+  });
 });
 
 describe("createRouter", () => {

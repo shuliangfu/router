@@ -14,7 +14,7 @@
 - **嵌套布局 API**：`getLayoutPathsForPath(pathname)`
   返回从根到该路由路径的布局文件完整路径数组（供
   SSR/构建使用）。`getLayoutKeysForPath(pathname)` 返回布局 key 数组（如
-  `["_layout", "bgb-x-admin/_layout"]`），供客户端按 key
+  `["_layout", "admin/_layout"]`），供客户端按 key
   动态加载。便于上层框架支持按路由层级的嵌套 `_layout.tsx`。
 
 ---
