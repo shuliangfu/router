@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.16] - 2026-03-11
+
+### Added
+
+- **Nested layout API**: `getLayoutPathsForPath(pathname)` returns the full
+  filesystem paths of layout files from root to the given route path (for
+  SSR/build). `getLayoutKeysForPath(pathname)` returns the layout keys (e.g.
+  `["_layout", "bgb-x-admin/_layout"]`) for client-side dynamic loading. Enables
+  frameworks to support nested `_layout.tsx` per route segment.
+
+---
+
 ## [1.0.15] - 2026-02-19
 
 ### Changed

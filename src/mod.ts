@@ -470,6 +470,50 @@ export class Router {
   }
 
   /**
+   * 根据路由路径获取从根到该路径的布局文件完整路径列表（用于嵌套布局）
+   * 例如 pathname 为 "/bgb-x-admin" 时返回 [根_layout 路径, bgb-x-admin/_layout 路径]
+   * @param pathname 路由路径（如 "/"、"/bgb-x-admin"、"/user/1"），可有可无前导/尾随斜杠
+   * @returns 布局文件的完整路径数组，从外到内
+   */
+  getLayoutPathsForPath(pathname: string): string[] {
+    const segments = (pathname || "")
+      .replace(/^\/+|\/+$/g, "")
+      .split("/")
+      .filter(Boolean);
+    const result: string[] = [];
+    const rootPath = this.specialFiles.get("_layout");
+    if (rootPath) result.push(rootPath);
+    for (let i = 0; i < segments.length; i++) {
+      const prefix = segments.slice(0, i + 1).join("/");
+      const key = `${prefix}/_layout`;
+      const fullPath = this.specialFiles.get(key);
+      if (fullPath) result.push(fullPath);
+    }
+    return result;
+  }
+
+  /**
+   * 根据路由路径获取从根到该路径的布局在 specialFiles 中的 key 列表（用于客户端按 key 动态加载）
+   * 例如 pathname 为 "/bgb-x-admin" 时返回 ["_layout", "bgb-x-admin/_layout"]
+   * @param pathname 路由路径（如 "/"、"/bgb-x-admin"）
+   * @returns 布局 key 数组，从外到内
+   */
+  getLayoutKeysForPath(pathname: string): string[] {
+    const segments = (pathname || "")
+      .replace(/^\/+|\/+$/g, "")
+      .split("/")
+      .filter(Boolean);
+    const result: string[] = [];
+    if (this.specialFiles.has("_layout")) result.push("_layout");
+    for (let i = 0; i < segments.length; i++) {
+      const prefix = segments.slice(0, i + 1).join("/");
+      const key = `${prefix}/_layout`;
+      if (this.specialFiles.has(key)) result.push(key);
+    }
+    return result;
+  }
+
+  /**
    * 加载模块（带 LRU 淘汰策略，防止内存泄漏）
    * @param filePath 文件路径
    * @returns 模块
