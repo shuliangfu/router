@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.0] - 2026-03-13
+
+### Added
+
+- **Client engine "view"**: `ClientRouterOptions.engine` now accepts `"view"` in
+  addition to `"preact"` and `"react"`, for use with `@dreamer/view` in dweb
+  applications.
+
+---
+
 ## [1.0.16] - 2026-03-11
 
 ### Added

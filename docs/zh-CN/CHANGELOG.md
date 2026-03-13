@@ -7,6 +7,15 @@
 
 ---
 
+## [1.1.0] - 2026-03-13
+
+### 新增
+
+- **客户端引擎 "view"**：`ClientRouterOptions.engine` 现支持 `"view"`（与
+  `"preact"`、`"react"` 并列），用于在 dweb 应用中配合 `@dreamer/view`。
+
+---
+
 ## [1.0.16] - 2026-03-11
 
 ### 新增

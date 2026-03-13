@@ -644,9 +644,8 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.0.15**（2026-02-19）：i18n 在模块加载时自动初始化，`initRouterI18n`
-不再导出； 依赖升级：@dreamer/test ^1.0.11、@dreamer/runtime-adapter ^1.0.15、
-@dreamer/esbuild ^1.0.30。详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.0**（2026-03-13）：`ClientRouterOptions.engine` 现支持 `"view"`，便于在
+dweb 应用中配合 @dreamer/view。详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

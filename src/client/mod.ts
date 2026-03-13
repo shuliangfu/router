@@ -168,8 +168,8 @@ export type NavigationState = "idle" | "loading" | "error";
 export interface ClientRouterOptions {
   /** 路由配置列表（由服务端生成） */
   routes: ClientRoute[];
-  /** 渲染引擎类型（preact、react，默认：preact） */
-  engine?: "preact" | "react";
+  /** 渲染引擎类型（preact、react、view，默认：preact） */
+  engine?: "preact" | "react" | "view";
   /** 基础路径（如 /app，默认：空） */
   basePath?: string;
   /** 路由模式（history 或 hash，默认：history） */
@@ -742,7 +742,7 @@ export class ClientRouter {
    * 获取当前渲染引擎
    * @returns 渲染引擎类型
    */
-  getEngine(): "preact" | "react" {
+  getEngine(): "preact" | "react" | "view" {
     return this.options.engine;
   }
 
