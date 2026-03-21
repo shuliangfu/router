@@ -7,6 +7,25 @@
 
 ---
 
+## [1.1.1] - 2026-03-21
+
+### 修复
+
+- 无全局 `ClientRouter` 时（如 Hybrid/SSR 首屏）客户端 hooks
+  不再抛错：`useRouter()` 返回 `null`；`useRoute()` 返回
+  `null`；`useQuery()`、`useParams()`、`useMeta()` 返回
+  `{}`；`useNavigationState()` 返回 `"idle"`；`useIsActive()` 返回 `false`。
+
+### 变更
+
+- **`useRouter()`** 返回类型为 `ClientRouter | null`，导航请使用可选链：
+  `useRouter()?.navigate(...)`。
+- **`getGlobalRouter`**、**`setGlobalRouter`** 不再从
+  `jsr:@dreamer/router/client` 导出，请改用 **`useRouter()`**。
+- 内部 Link / `navigate` 等改为使用 **`useRouter()`**。
+
+---
+
 ## [1.1.0] - 2026-03-13
 
 ### 新增

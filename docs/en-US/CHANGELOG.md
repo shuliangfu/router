@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.1] - 2026-03-21
+
+### Fixed
+
+- Client hooks no longer throw when no global `ClientRouter` is registered (e.g.
+  Hybrid/SSR first paint): `useRouter()` returns `null`; `useRoute()` returns
+  `null`; `useQuery()`, `useParams()`, and `useMeta()` return `{}`;
+  `useNavigationState()` returns `"idle"`; `useIsActive()` returns `false`.
+
+### Changed
+
+- **`useRouter()`** return type is now `ClientRouter | null`. Use optional
+  chaining for navigation: `useRouter()?.navigate(...)`.
+- **`getGlobalRouter`** and **`setGlobalRouter`** are no longer exported from
+  `jsr:@dreamer/router/client`; use **`useRouter()`** instead.
+- Internal `Link` / `navigate` helpers use **`useRouter()`** instead of removed
+  exports.
+
+---
+
 ## [1.1.0] - 2026-03-13
 
 ### Added

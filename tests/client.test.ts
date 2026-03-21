@@ -11,6 +11,12 @@ import {
   ClientRouter,
   type ClientRouterOptions,
   createRouter,
+  useIsActive,
+  useNavigationState,
+  useParams,
+  useQuery,
+  useRoute,
+  useRouter,
 } from "../src/client/mod.ts";
 
 /**
@@ -985,5 +991,50 @@ describe("ClientRouter - 新功能测试", () => {
       const router = createRouter({ routes: testRoutes });
       expect(typeof router.prefetch).toBe("function");
     });
+  });
+});
+
+/**
+ * 无全局 ClientRouter 时（Hybrid/SSR 首屏、测试隔离）hooks 须安全降级，不得抛错。
+ */
+describe("Router hooks without global instance (SSR-safe)", () => {
+  /**
+   * 通过销毁当前全局路由器清空全局引用（`setGlobalRouter` 不对外导出）
+   */
+  const clearGlobalRouter = (): void => {
+    const r = useRouter();
+    if (r) r.destroy();
+  };
+
+  beforeEach(() => {
+    clearGlobalRouter();
+  });
+
+  afterEach(() => {
+    clearGlobalRouter();
+  });
+
+  it("useRoute 应返回 null", () => {
+    expect(useRoute()).toBeNull();
+  });
+
+  it("useQuery 应返回空对象", () => {
+    expect(useQuery()).toEqual({});
+  });
+
+  it("useParams 应返回空对象", () => {
+    expect(useParams()).toEqual({});
+  });
+
+  it("useNavigationState 应返回 idle", () => {
+    expect(useNavigationState()).toBe("idle");
+  });
+
+  it("useIsActive 应返回 false", () => {
+    expect(useIsActive("/")).toBe(false);
+  });
+
+  it("useRouter 应返回 null", () => {
+    expect(useRouter()).toBeNull();
   });
 });

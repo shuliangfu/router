@@ -188,26 +188,30 @@ describe("客户端路由器 - 浏览器测试", () => {
     expect(result.hasUseRouter).toBe(true);
   }, browserConfig);
 
-  it("useRouter: 应该抛出错误", async (ctx) => {
-    if ((ctx as any)._browserSetupError) return;
-    const browser = (ctx as any).browser;
-    if (!browser) return;
+  it(
+    "useRouter: 无全局实例时应返回 null（SSR / 未 start 同构安全）",
+    async (ctx) => {
+      if ((ctx as any)._browserSetupError) return;
+      const browser = (ctx as any).browser;
+      if (!browser) return;
 
-    const result = await browser.evaluate(() => {
-      const RouterClient = (globalThis as any).RouterClient;
-      if (!RouterClient) return { error: "RouterClient not available" };
-      try {
-        RouterClient.useRouter();
-        return { threw: false };
-      } catch (e) {
-        return { threw: true, message: (e as Error).message };
-      }
-    });
+      const result = await browser.evaluate(() => {
+        const RouterClient = (globalThis as any).RouterClient;
+        if (!RouterClient) return { error: "RouterClient not available" };
+        try {
+          const r = RouterClient.useRouter();
+          return { ok: true, isNull: r === null };
+        } catch (e) {
+          return { ok: false, message: (e as Error).message };
+        }
+      });
 
-    if (result.error) return;
-    expect(result.threw).toBe(true);
-    expect(result.message).toContain("useRouter");
-  }, browserConfig);
+      if (result.error) return;
+      expect(result.ok).toBe(true);
+      expect((result as { isNull?: boolean }).isNull).toBe(true);
+    },
+    browserConfig,
+  );
 
   it("getEngine: 应该返回配置的引擎", async (ctx) => {
     if ((ctx as any)._browserSetupError) return;

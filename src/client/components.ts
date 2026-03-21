@@ -22,7 +22,7 @@
  * ```
  */
 
-import { getGlobalRouter } from "./mod.ts";
+import { useRouter } from "./mod.ts";
 
 // ============================================================================
 // 类型定义
@@ -151,7 +151,7 @@ export function createLinkProps(props: LinkProps): LinkAttributes {
     ...rest
   } = props;
 
-  const router = getGlobalRouter();
+  const router = useRouter();
 
   // 解析完整路径
   const href = router ? router.resolvePath(to) : to;
@@ -267,7 +267,7 @@ export function createNavLinkProps(props: NavLinkProps): NavLinkAttributes {
     ...rest,
   });
 
-  const router = getGlobalRouter();
+  const router = useRouter();
 
   // 检查是否活跃
   let isActiveResult = false;
@@ -322,7 +322,7 @@ export function createNavLinkProps(props: NavLinkProps): NavLinkAttributes {
  * @returns 是否匹配
  */
 export function isPathActive(path: string, exact = false): boolean {
-  const router = getGlobalRouter();
+  const router = useRouter();
   if (!router) {
     return false;
   }
@@ -339,7 +339,7 @@ export function navigate(
   to: string,
   options: { replace?: boolean; state?: any } = {},
 ): Promise<void> {
-  const router = getGlobalRouter();
+  const router = useRouter();
   if (!router) {
     return Promise.reject(new Error("navigate: 没有找到路由器实例"));
   }
@@ -352,7 +352,7 @@ export function navigate(
  * @param path 目标路径
  */
 export function prefetch(path: string): Promise<unknown | null> {
-  const router = getGlobalRouter();
+  const router = useRouter();
   if (!router) {
     return Promise.resolve(null);
   }

@@ -644,8 +644,9 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.1.0**（2026-03-13）：`ClientRouterOptions.engine` 现支持 `"view"`，便于在
-dweb 应用中配合 @dreamer/view。详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.1**（2026-03-21）：无全局路由器时 hooks 不抛错，`useRouter()` 可为
+`null`；不再导出 `getGlobalRouter` / `setGlobalRouter`。详见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

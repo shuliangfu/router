@@ -12,11 +12,11 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 **Changelog**: [English](./docs/en-US/CHANGELOG.md) |
 [中文 (Chinese)](./docs/zh-CN/CHANGELOG.md)
 
-### [1.1.0] - 2026-03-13
+### [1.1.1] - 2026-03-21
 
-- **Added**: `ClientRouterOptions.engine` now supports `"view"` for
-  `@dreamer/view` in dweb apps. Full history:
-  [Changelog](./docs/en-US/CHANGELOG.md)
+- **Fixed**: Client hooks SSR-safe when no global router; **`useRouter()`**
+  returns `null`; removed **`getGlobalRouter`** / **`setGlobalRouter`** exports.
+  Full history: [Changelog](./docs/en-US/CHANGELOG.md)
 
 ---
 

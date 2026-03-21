@@ -261,16 +261,8 @@ let globalRouter: ClientRouter | null = null;
  * 设置全局路由器实例
  * @param router 路由器实例
  */
-export function setGlobalRouter(router: ClientRouter | null): void {
+function setGlobalRouter(router: ClientRouter | null): void {
   globalRouter = router;
-}
-
-/**
- * 获取全局路由器实例
- * @returns 路由器实例
- */
-export function getGlobalRouter(): ClientRouter | null {
-  return globalRouter;
 }
 
 // ============================================================================
@@ -1385,26 +1377,27 @@ export function createRouter(options: ClientRouterOptions): ClientRouter {
 // ============================================================================
 
 /**
- * 获取路由器实例
- * @returns 路由器实例
- * @throws 如果没有设置全局路由器，抛出错误
+ * 获取全局客户端路由器实例
+ *
+ * 与是否「服务端」无关：仅看当前进程里是否已通过 `new ClientRouter()` / `createRouter()` 注册全局实例。
+ * Hybrid/SSR 首屏、`start()` 之前等场景下全局尚未挂载时返回 `null`，业务侧可写 `useRouter()?.navigate(...)`。
+ *
+ * @returns 路由器实例；无全局路由器时为 `null`
  */
-export function useRouter(): ClientRouter {
-  const router = getGlobalRouter();
-  if (!router) {
-    throw new Error(
-      "useRouter: 没有找到路由器实例。请确保已创建路由器并调用了 start() 方法。",
-    );
-  }
-  return router;
+export function useRouter(): ClientRouter | null {
+  return globalRouter;
 }
 
 /**
  * 获取当前路由信息
- * @returns 当前路由匹配结果
+ *
+ * 无全局路由器时（与 `useRouter()` 为 `null` 相同情形）返回 `null`；可配合 `useQuery` / `useParams` 在首屏得到空对象。
+ *
+ * @returns 当前路由匹配结果；无全局路由器时为 `null`
  */
 export function useRoute(): ClientRouteMatch | null {
   const router = useRouter();
+  if (!router) return null;
   return router.getCurrentRoute();
 }
 
@@ -1437,21 +1430,29 @@ export function useMeta(): RouteMeta {
 
 /**
  * 获取导航状态
+ *
+ * 无全局路由器时返回 `"idle"`，便于在 SSR 中与客户端组件同构使用。
+ *
  * @returns 当前导航状态
  */
 export function useNavigationState(): NavigationState {
   const router = useRouter();
+  if (!router) return "idle";
   return router.getNavigationState();
 }
 
 /**
  * 检查路径是否活跃
- * @param path 路径
- * @param exact 是否精确匹配
+ *
+ * 无全局路由器时返回 `false`。
+ *
+ * @param path - 路径
+ * @param exact - 是否精确匹配
  * @returns 是否活跃
  */
 export function useIsActive(path: string, exact = false): boolean {
   const router = useRouter();
+  if (!router) return false;
   return router.isActive(path, exact);
 }
 
