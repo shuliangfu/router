@@ -61,6 +61,8 @@ interface BrowserMouseEvent {
   metaKey: boolean;
   preventDefault: () => void;
   stopImmediatePropagation?: () => void;
+  /** Shadow DOM 等场景下用于在父链外解析真实点击路径 */
+  composedPath?: () => EventTarget[];
 }
 
 /**
@@ -876,6 +878,90 @@ export class ClientRouter {
   // ==========================================================================
 
   /**
+   * 判断节点是否为 `<a>` 元素（不区分 tagName 大小写）
+   * @param node 待检查的节点（宽松类型，兼容 DOM 与 mock）
+   */
+  private static isAnchorNode(
+    node: unknown,
+  ): node is BrowserElement {
+    if (!node || typeof node !== "object") return false;
+    const el = node as { nodeType?: number; tagName?: string };
+    if (el.nodeType !== 1) return false;
+    return String(el.tagName || "").toUpperCase() === "A";
+  }
+
+  /**
+   * 规范化 `<a target>`：`getAttribute("target")` 在部分框架下会得到字符串 "undefined" / "null"（undefined 被 setAttribute 序列化），
+   * 与「未写 target」等价，应按默认 browsing context（_self）处理。
+   * @param raw `getAttribute("target")` 的返回值
+   * @returns 非空且语义有效的 target；否则视为未指定（返回 null）
+   */
+  private static normalizeAnchorTargetAttribute(
+    raw: string | null,
+  ): string | null {
+    if (raw == null) return null;
+    const t = raw.trim();
+    if (t === "" || t === "undefined" || t === "null") return null;
+    return t;
+  }
+
+  /**
+   * 从点击事件解析锚元素：先沿 `event.target` 父链向上查找 `<a>`；
+   * Shadow DOM 下点击可能被重定向到 host，父链上可能无 `<a>`，此时回退 `composedPath()`。
+   * @param mouseEvent 捕获阶段的鼠标事件
+   * @returns 锚元素与是否由 `composedPath` 解析；未找到则返回 `null`
+   */
+  private findAnchorFromClickEvent(
+    mouseEvent: BrowserMouseEvent,
+  ): { anchor: BrowserElement; viaComposedPath: boolean } | null {
+    type NodeLike = {
+      nodeType?: number;
+      tagName?: string;
+      parentNode?: NodeLike | null;
+    } | null;
+
+    let node: NodeLike = mouseEvent.target as unknown as NodeLike;
+    while (node != null) {
+      if (ClientRouter.isAnchorNode(node)) {
+        return {
+          anchor: node as unknown as BrowserElement,
+          viaComposedPath: false,
+        };
+      }
+      node = node.parentNode ?? null;
+    }
+
+    const pathGetter = mouseEvent.composedPath;
+    if (typeof pathGetter === "function") {
+      try {
+        const path = pathGetter.call(mouseEvent);
+        for (let i = 0; i < path.length; i++) {
+          const t = path[i];
+          if (ClientRouter.isAnchorNode(t)) {
+            return {
+              anchor: t as unknown as BrowserElement,
+              viaComposedPath: true,
+            };
+          }
+        }
+      } catch {
+        // composedPath 在部分环境可能抛错，忽略
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 记录链接未做客户端拦截的原因（仅在 `debug: true` 时通过 `debugLog` 输出）
+   * @param reason 简短原因说明
+   * @param detail 可选的附加信息（如 href、属性值）
+   */
+  private logClickInterceptSkip(reason: string, detail?: unknown): void {
+    this.debugLog("click", "intercept skipped:", reason, detail ?? "");
+  }
+
+  /**
    * 设置链接点击拦截器
    */
   private setupClickInterceptor(): void {
@@ -888,7 +974,7 @@ export class ClientRouter {
     this.clickHandler = (event: Event) => {
       const mouseEvent = event as unknown as BrowserMouseEvent;
 
-      // 检查修饰键
+      // 检查修饰键（新窗口/后台打开等场景应走浏览器默认行为；不记 debug，避免每次组合键点击刷屏）
       if (
         mouseEvent.ctrlKey ||
         mouseEvent.shiftKey ||
@@ -898,49 +984,52 @@ export class ClientRouter {
         return;
       }
 
-      // 检查鼠标左键
+      // 检查鼠标左键（中键/右键不记 debug）
       if (mouseEvent.button !== 0) {
         return;
       }
 
-      // 查找 <a> 元素（Solid 等框架下 event.target 可能为文本节点，文本节点无 parentElement，需用 parentNode 向上查找）
-      type NodeLike = {
-        nodeType?: number;
-        tagName?: string;
-        parentNode?: NodeLike | null;
-      } | null;
-      let node: NodeLike = mouseEvent.target as unknown as NodeLike;
-      let anchor: BrowserElement | null = null;
-      while (node != null) {
-        if (node.nodeType === 1 && (node as BrowserElement).tagName === "A") {
-          anchor = node as unknown as BrowserElement;
-          break;
-        }
-        node = node.parentNode ?? null;
-      }
-
-      if (!anchor) {
-        this.debugLog("click", "no <a> found for target", mouseEvent.target);
+      // 查找 <a>（含 composedPath，应对 Shadow DOM 下 target 重定向）
+      const anchorResult = this.findAnchorFromClickEvent(mouseEvent);
+      if (!anchorResult) {
+        // 非链接点击极常见，不在此输出 debug，避免刷屏
         return;
       }
+      const { anchor, viaComposedPath } = anchorResult;
+      if (viaComposedPath) {
+        this.debugLog(
+          "click",
+          "resolved <a> via composedPath (shadow/retarget)",
+        );
+      }
+
       const href = anchor.getAttribute("href");
       if (!href || href.trim() === "") {
+        this.logClickInterceptSkip("empty or missing href");
         return;
       }
 
-      // 检查 target 属性
-      const targetAttr = anchor.getAttribute("target");
-      if (targetAttr && targetAttr !== "_self") {
+      // 检查 target 属性（忽略被错误序列化成 "undefined" 的占位，见 normalizeAnchorTargetAttribute）
+      const targetAttr = ClientRouter.normalizeAnchorTargetAttribute(
+        anchor.getAttribute("target"),
+      );
+      if (targetAttr != null && targetAttr !== "_self") {
+        this.logClickInterceptSkip("target is not _self", {
+          target: targetAttr,
+          href,
+        });
         return;
       }
 
       // 检查 download 属性
       if (anchor.hasAttribute("download")) {
+        this.logClickInterceptSkip("has download attribute", { href });
         return;
       }
 
       // 检查 data-native 属性
       if (anchor.hasAttribute("data-native")) {
+        this.logClickInterceptSkip("has data-native attribute", { href });
         return;
       }
 
@@ -952,9 +1041,18 @@ export class ClientRouter {
         if (
           linkUrl.protocol !== "http:" && linkUrl.protocol !== "https:"
         ) {
+          this.logClickInterceptSkip("non-http(s) protocol", {
+            protocol: linkUrl.protocol,
+            href,
+          });
           return;
         }
         if (linkUrl.origin !== currentOrigin) {
+          this.logClickInterceptSkip("cross-origin", {
+            linkOrigin: linkUrl.origin,
+            currentOrigin,
+            href,
+          });
           return;
         }
 
@@ -964,6 +1062,10 @@ export class ClientRouter {
           linkUrl.search === browserGlobal.location?.search &&
           linkUrl.hash
         ) {
+          this.logClickInterceptSkip("same-document hash only", {
+            href,
+            hash: linkUrl.hash,
+          });
           return;
         }
 
@@ -974,7 +1076,11 @@ export class ClientRouter {
         const path = linkUrl.pathname + linkUrl.search + linkUrl.hash;
         this.debugLog("click", "intercepted", href, "-> navigate", path);
         this.navigate(path);
-      } catch {
+      } catch (err) {
+        this.logClickInterceptSkip("URL parse/resolution error", {
+          href,
+          error: err,
+        });
         return;
       }
     };

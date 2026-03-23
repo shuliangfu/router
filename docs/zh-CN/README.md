@@ -644,9 +644,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.1.1**（2026-03-21）：无全局路由器时 hooks 不抛错，`useRouter()` 可为
-`null`；不再导出 `getGlobalRouter` / `setGlobalRouter`。详见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.2**（2026-03-23）：**新增** — **`isLikelyClientBundledAssetPath`** 与
+**`Router.match`** 对客户端 bundle URL 快速返回；链接拦截支持
+**`composedPath`**（Shadow DOM）；**`normalizeAnchorTargetAttribute`** 纠正错误
+**`target`** 字符串；**`debug`** 下记录跳过拦截原因。**变更** —
+**`@dreamer/esbuild` ^1.1.6**。详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

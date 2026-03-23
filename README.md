@@ -657,10 +657,12 @@ navigation):
 
 ## 📋 Changelog
 
-**v1.0.13** (2026-02-18): i18n init at entry only (`initRouterI18n()` in mod);
-`$t()` no longer calls ensure/init internally.
-
-See [CHANGELOG.md](./docs/en-US/CHANGELOG.md) for full history.
+**v1.1.2** (2026-03-23): **Added** — **`isLikelyClientBundledAssetPath`** +
+early **`Router.match`** skip for client bundle URLs; client intercept resolves
+**`<a>`** via **`composedPath`** (Shadow DOM);
+**`normalizeAnchorTargetAttribute`** for bogus **`"undefined"`** targets;
+**debug** skip reasons. **Changed** — **`@dreamer/esbuild` ^1.1.6**. Full
+history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

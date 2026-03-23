@@ -6,7 +6,11 @@ import { describe, expect, it } from "@dreamer/test";
 // 使用 Node.js 兼容的 path 模块（Bun 和 Deno 都支持）
 import { cwd, mkdir, remove, writeTextFile } from "@dreamer/runtime-adapter";
 import { join } from "node:path";
-import { createRouter, Router } from "../src/mod.ts";
+import {
+  createRouter,
+  isLikelyClientBundledAssetPath,
+  Router,
+} from "../src/mod.ts";
 
 describe("Router", () => {
   const testRoutesDir = join(cwd(), "tests", "data", "test-routes");
@@ -657,6 +661,37 @@ describe("Router - 新功能测试", () => {
 
       const match = await router.match("/");
       expect(match?.meta).toBeDefined();
+    });
+  });
+
+  /** dweb 客户端 chunk 不应触发全路由表线性扫描 */
+  describe("isLikelyClientBundledAssetPath", () => {
+    it("应识别常见 esbuild 产物路径", () => {
+      expect(isLikelyClientBundledAssetPath("/_client.js")).toBe(true);
+      expect(isLikelyClientBundledAssetPath("/_client.js.map")).toBe(true);
+      expect(isLikelyClientBundledAssetPath("/chunk-K2TIKKEU.js")).toBe(true);
+      expect(isLikelyClientBundledAssetPath("/chunk-K2TIKKEU.js.map")).toBe(
+        true,
+      );
+      expect(isLikelyClientBundledAssetPath("/_layout-LQB4YY5Z.js")).toBe(true);
+      expect(isLikelyClientBundledAssetPath("/icon-RCTTONCK.js")).toBe(true);
+      expect(isLikelyClientBundledAssetPath("/routes/index-abc12def.js")).toBe(
+        true,
+      );
+    });
+
+    it("不应把普通页面路径当成 bundle", () => {
+      expect(isLikelyClientBundledAssetPath("/")).toBe(false);
+      expect(isLikelyClientBundledAssetPath("/desktop")).toBe(false);
+      expect(isLikelyClientBundledAssetPath("/user/1")).toBe(false);
+      expect(isLikelyClientBundledAssetPath("/api/hello")).toBe(false);
+    });
+
+    it("match 对 bundle 路径应直接返回 null", async () => {
+      await setupTestRoutes();
+      const router = createRouter({ routesDir: testRoutesDir });
+      await router.scan();
+      expect(await router.match("/chunk-TESTHASH.js")).toBeNull();
     });
   });
 });

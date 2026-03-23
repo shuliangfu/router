@@ -174,6 +174,36 @@ export interface RouteMatch {
 }
 
 // ============================================================================
+// 客户端 bundle 路径快速排除（避免每个 JS chunk 请求都 O(routes) 扫描）
+// ============================================================================
+
+/**
+ * 判断 pathname 是否像 dweb/esbuild 等产出的**客户端脚本资源**，而非应用「页面」路由。
+ *
+ * HTTP 中间件链里路由适配器往往先于 `/_client.js`、chunk 中间件执行；若在此处对每条请求做
+ * 全表线性匹配，会产生无意义 CPU 与调试日志（如 `no match … routes count: 100`）。
+ * 对明显为 bundle 的 URL 直接返回 null，跳过后续扫描。
+ *
+ * @param pathname 仅 pathname（含前导 `/`、无 query），与 `Router.match` 内 `cleanPath` 一致
+ */
+export function isLikelyClientBundledAssetPath(pathname: string): boolean {
+  if (pathname === "/_client.js" || pathname === "/_client.js.map") {
+    return true;
+  }
+  if (pathname.startsWith("/_client/") && /\.js(\.map)?$/i.test(pathname)) {
+    return true;
+  }
+  if (/^\/chunk-[^/]+\.js(\.map)?$/i.test(pathname)) return true;
+  if (/^\/_layout-[^/]+\.js(\.map)?$/i.test(pathname)) return true;
+  if (/^\/icon-[^/]+\.js(\.map)?$/i.test(pathname)) return true;
+  if (/^\/routes\/[\w[\]./-]+-[a-z0-9]{4,}\.js(\.map)?$/i.test(pathname)) {
+    return true;
+  }
+  if (/^\/[\w[\]-]+-[a-z0-9]{4,}\.js(\.map)?$/i.test(pathname)) return true;
+  return false;
+}
+
+// ============================================================================
 // 路由器类
 // ============================================================================
 
@@ -286,9 +316,7 @@ export class Router {
     pathname: string,
     options?: { method?: string; request?: Request },
   ): Promise<RouteMatch | null> {
-    this.debugLog("match", "pathname:", pathname, "method:", options?.method);
-
-    // 解析查询参数
+    // 解析查询参数（先于 debug，便于对 cleanPath 做 bundle 快速排除且不刷屏）
     const url = new URL(pathname, "http://localhost");
     const query: Record<string, string> = {};
     for (const [key, value] of url.searchParams.entries()) {
@@ -296,6 +324,12 @@ export class Router {
     }
 
     const cleanPath = url.pathname;
+
+    if (isLikelyClientBundledAssetPath(cleanPath)) {
+      return null;
+    }
+
+    this.debugLog("match", "pathname:", pathname, "method:", options?.method);
 
     // 首先检查重定向
     const redirectResult = this.checkRedirects(cleanPath);

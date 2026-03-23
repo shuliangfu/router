@@ -7,6 +7,32 @@
 
 ---
 
+## [1.1.2] - 2026-03-23
+
+### 新增
+
+- **`isLikelyClientBundledAssetPath(pathname)`**（`src/mod.ts`）：识别常见
+  dweb/esbuild 客户端脚本 URL（如 **`/_client.js`**、**`/chunk-*.js`**、
+  **`/_layout-*.js`**、带 hash 的 route chunk 等）。**`Router.match`** 对这些
+  pathname **提前返回 `null`**，避免 HTTP 适配器在静态资源请求上 **O(routes)**
+  全表扫描及 **`debug`** 日志刷屏。
+- **客户端链接拦截**（`src/client/mod.ts`）：沿 **`event.target`** 父链找不到
+  **`<a>`** 时回退 **`composedPath()`**，应对 Shadow DOM 重定向。
+- **`normalizeAnchorTargetAttribute`**：将错误的 **`"undefined"` / `"null"`**
+  字符串 target（来自不当 **`setAttribute`**）视为未指定，避免误判为非
+  **`_self`** 而跳过拦截。
+- **`debug: true`** 时通过 **`logClickInterceptSkip`** 记录未拦截原因（非
+  **`_self`**、download、跨域、仅 hash、URL 解析错误等）；普通非链接点击不再打
+  debug 噪音。
+
+### 变更
+
+- **`Router.match`**：在输出 **`match`** 的 **`debugLog`** 之前先做 bundle
+  路径快速排除。
+- **`@dreamer/esbuild`** 依赖范围升至 **^1.1.6**（import map / npm）。
+
+---
+
 ## [1.1.1] - 2026-03-21
 
 ### 修复

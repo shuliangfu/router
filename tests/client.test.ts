@@ -512,6 +512,8 @@ describe("ClientRouter - 链接拦截 (特殊链接形式)", () => {
     target?: string;
     download?: boolean;
     dataNative?: boolean;
+    /** 覆盖 getAttribute("target")，模拟 setAttribute 把 undefined 写成字面量 "undefined" 的 DOM */
+    targetAttrReturn?: string | null;
   }) {
     return {
       tagName: "A",
@@ -519,7 +521,12 @@ describe("ClientRouter - 链接拦截 (特殊链接形式)", () => {
       parentNode: null as unknown,
       getAttribute: (name: string): string | null => {
         if (name === "href") return attrs.href;
-        if (name === "target") return attrs.target ?? null;
+        if (name === "target") {
+          if ("targetAttrReturn" in attrs) {
+            return attrs.targetAttrReturn ?? null;
+          }
+          return attrs.target ?? null;
+        }
         return null;
       },
       hasAttribute: (name: string): boolean => {
@@ -739,6 +746,49 @@ describe("ClientRouter - 链接拦截 (特殊链接形式)", () => {
     const { event, preventDefaultCalled } = createMockClickEvent(anchor);
     handler(event);
     expect(preventDefaultCalled()).toBe(true);
+  });
+
+  it("target 为字符串 undefined（错误序列化）时应视同未指定并拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({
+      href: "/about",
+      targetAttrReturn: "undefined",
+    });
+    const { event, preventDefaultCalled } = createMockClickEvent(anchor);
+    handler(event);
+    expect(preventDefaultCalled()).toBe(true);
+  });
+
+  /**
+   * 当 event.target 父链上找不到 `<a>`，但 composedPath 中含同源 `<a>` 时仍应拦截
+   * （模拟 Shadow / 重定向等场景下父链不完整的情况）
+   */
+  it("composedPath 中含同源 <a> 时应拦截", () => {
+    const handler = startAndGetClickHandler();
+    if (!handler) return;
+    const anchor = createMockAnchor({ href: "/about" });
+    const inner = {
+      nodeType: 1,
+      tagName: "SPAN",
+      parentNode: null,
+    };
+    let prevented = false;
+    const event = {
+      target: inner,
+      button: 0,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      composedPath: () => [inner, anchor],
+      preventDefault: () => {
+        prevented = true;
+      },
+      stopImmediatePropagation: () => {},
+    } as unknown as Event;
+    handler(event);
+    expect(prevented).toBe(true);
   });
 
   it("跨页带 hash 的链接应拦截", () => {

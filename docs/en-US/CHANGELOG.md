@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.2] - 2026-03-23
+
+### Added
+
+- **`isLikelyClientBundledAssetPath(pathname)`** (`src/mod.ts`): Returns true
+  for typical dweb/esbuild client script URLs (`/_client.js`, `/chunk-*.js`,
+  `/_layout-*.js`, hashed route chunks, etc.). **`Router.match`** returns
+  **`null`** early for these paths so HTTP adapters do not run **O(routes)**
+  scans or spam **`debug`** logs on every asset request.
+- **Client link intercept** (`src/client/mod.ts`): Resolve `<a>` via
+  **`composedPath()`** when the parent chain from **`event.target`** does not
+  contain an anchor (Shadow DOM retargeting).
+- **`normalizeAnchorTargetAttribute`**: Treats **`"undefined"`** / **`"null"`**
+  string targets (from bad **`setAttribute`**) as unspecified so same-document
+  navigation is not skipped.
+- When **`debug: true`**, **`logClickInterceptSkip`** records reasons for
+  skipping intercept (non-**`_self`** target, download, cross-origin, hash-only,
+  URL errors, etc.); routine non-link clicks no longer log noise.
+
+### Changed
+
+- **`Router.match`**: Runs bundle-path fast path before **`debugLog`** for
+  **`match`**.
+- **`@dreamer/esbuild`** import map / npm dependency range bumped to **^1.1.6**.
+
+---
+
 ## [1.1.1] - 2026-03-21
 
 ### Fixed
