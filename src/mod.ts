@@ -37,6 +37,12 @@
 import { cwd, dirname, join, readdir, stat } from "@dreamer/runtime-adapter";
 // 服务端 i18n（错误与日志文案）
 import { $tr, type Locale } from "./i18n.ts";
+import {
+  buildRouteMatchPrep,
+  compareRoutesForScanOrder,
+  matchRoutePattern,
+  type RouteMatchPrep,
+} from "./core.ts";
 
 // ============================================================================
 // 类型定义
@@ -237,6 +243,19 @@ export class Router {
   private moduleCache: Map<string, any> = new Map();
   /** 模块缓存访问顺序（用于 LRU 淘汰） */
   private moduleCacheOrder: string[] = [];
+  /** 按 fullPath 缓存路径匹配预计算（scan 时写入，减少 match 热路径 split） */
+  private routeMatchPrepByFullPath = new Map<string, RouteMatchPrep | null>();
+  /**
+   * API 文件已解析的 handlers 缓存（与 loadModule 分离；clearCache/scan 时失效）
+   */
+  private apiHandlersCache = new Map<
+    string,
+    | Record<
+      string,
+      (request: Request, context?: any) => Promise<Response> | Response
+    >
+    | null
+  >();
 
   /**
    * 创建路由器实例
@@ -284,6 +303,8 @@ export class Router {
     // 清除缓存和 LRU 顺序
     this.moduleCache.clear();
     this.moduleCacheOrder = [];
+    this.routeMatchPrepByFullPath.clear();
+    this.apiHandlersCache.clear();
 
     try {
       await this.scanDirectory(this.options.routesDir, "");
@@ -293,6 +314,14 @@ export class Router {
         $tr("error.scanRoutesFailed", { message }, this.options.lang),
       );
     }
+
+    // 按特异性排序：静态/字面量优先于动态与通配，页面与 API 分块（页面在前），不依赖 readdir 顺序
+    this.routes.sort((a, b) =>
+      compareRoutesForScanOrder(
+        { path: a.path, type: a.type, isApi: a.isApi },
+        { path: b.path, type: b.type, isApi: b.isApi },
+      )
+    );
 
     // 验证 _app 是否存在（可配置跳过）
     if (!this.options.skipAppValidation && !this.specialFiles.has("_app")) {
@@ -486,7 +515,7 @@ export class Router {
       .filter((r) => !r.isApi && !r.isSpecial)
       .map((r) => ({
         path: r.path,
-        component: r.file.replace(/\.(tsx?|jsx?)$/, ""),
+        component: r.file.replace(/\.(tsx|jsx)$/, ""),
         type: r.type,
         meta: r.meta,
       }));
@@ -597,6 +626,7 @@ export class Router {
   clearCache(filePath?: string): void {
     if (filePath) {
       this.moduleCache.delete(filePath);
+      this.apiHandlersCache.delete(filePath);
       // 从 LRU 顺序中移除
       const index = this.moduleCacheOrder.indexOf(filePath);
       if (index > -1) {
@@ -605,6 +635,7 @@ export class Router {
     } else {
       this.moduleCache.clear();
       this.moduleCacheOrder = [];
+      this.apiHandlersCache.clear();
     }
   }
 
@@ -776,15 +807,25 @@ export class Router {
       return;
     }
 
-    // 检查是否为路由文件（支持 .tsx、.ts）
-    const isRouteFile = fileName.endsWith(".tsx") || fileName.endsWith(".ts");
-    if (!isRouteFile) {
-      return;
-    }
-
     // 判断是否为 API 路由（使用规范化后的路径，Windows 下 relativePath 可能含反斜杠）
     const isApi = normalizedPath.startsWith("api/") ||
       normalizedPath.split("/").includes("api");
+
+    const lower = fileName.toLowerCase();
+    /** 页面路由仅 .tsx / .jsx，避免 routes 内工具 .ts 被当作页面 */
+    const isPageRoute = lower.endsWith(".tsx") || lower.endsWith(".jsx");
+    /**
+     * API 目录下仍支持 .ts / .js（及 tsx/jsx）作为 handler，与现有示例一致。
+     */
+    const isApiRouteFile = isApi &&
+      (lower.endsWith(".ts") ||
+        lower.endsWith(".js") ||
+        lower.endsWith(".tsx") ||
+        lower.endsWith(".jsx"));
+
+    if (!isPageRoute && !isApiRouteFile) {
+      return;
+    }
 
     // 解析路由路径和类型（传入规范化路径，确保 route.path 正确）
     const routeInfo = this.parseRoutePath(normalizedPath, fileName, isApi);
@@ -800,6 +841,10 @@ export class Router {
     };
 
     this.routes.push(route);
+    this.routeMatchPrepByFullPath.set(
+      fullPath,
+      buildRouteMatchPrep(route.path, route.type),
+    );
   }
 
   /**
@@ -831,7 +876,7 @@ export class Router {
     fileName: string,
     _isApi: boolean,
   ): { path: string; file: string; type: RouteType } {
-    const nameWithoutExt = fileName.replace(/\.(tsx|ts)$/, "");
+    const nameWithoutExt = fileName.replace(/\.(tsx|ts|jsx|js)$/, "");
 
     // 处理 index 文件
     if (nameWithoutExt === "index") {
@@ -943,50 +988,9 @@ export class Router {
     route: Route,
     pathname: string,
   ): { params: Record<string, string> } | null {
-    const routePath = route.path;
-    const params: Record<string, string> = {};
-
-    if (route.type === "static") {
-      return routePath === pathname ? { params } : null;
-    }
-
-    const routeParts = routePath.split("/").filter(Boolean);
-    const pathParts = pathname.split("/").filter(Boolean);
-
-    if (route.type === "wildcard") {
-      const prefix = routePath.replace("/*", "");
-      if (pathname.startsWith(prefix)) {
-        const rest = pathname.slice(prefix.length);
-        params["*"] = rest;
-        return { params };
-      }
-      return null;
-    }
-
-    if (route.type === "optional") {
-      const basePath = routePath.replace(/\/:[^?]+(\?)?$/, "");
-      if (pathname === basePath) {
-        return { params };
-      }
-    }
-
-    if (routeParts.length !== pathParts.length) {
-      return null;
-    }
-
-    for (let i = 0; i < routeParts.length; i++) {
-      const routePart = routeParts[i];
-      const pathPart = pathParts[i];
-
-      if (routePart.startsWith(":")) {
-        const paramName = routePart.replace(/^:/, "").replace(/\?$/, "");
-        params[paramName] = pathPart;
-      } else if (routePart !== pathPart) {
-        return null;
-      }
-    }
-
-    return { params };
+    const prep = this.routeMatchPrepByFullPath.get(route.fullPath) ?? null;
+    const params = matchRoutePattern(route.path, pathname, route.type, prep);
+    return params !== null ? { params } : null;
   }
 
   /**
@@ -1001,6 +1005,10 @@ export class Router {
     >
     | null
   > {
+    if (this.apiHandlersCache.has(filePath)) {
+      return this.apiHandlersCache.get(filePath)!;
+    }
+
     try {
       const module = await this.importModule(filePath);
 
@@ -1026,7 +1034,11 @@ export class Router {
           }
         }
 
-        return Object.keys(handlers).length > 0 ? handlers : null;
+        const restfulResult = Object.keys(handlers).length > 0
+          ? handlers
+          : null;
+        this.apiHandlersCache.set(filePath, restfulResult);
+        return restfulResult;
       } else {
         const handlers: Record<
           string,
@@ -1054,7 +1066,9 @@ export class Router {
           }
         }
 
-        return Object.keys(handlers).length > 0 ? handlers : null;
+        const actionResult = Object.keys(handlers).length > 0 ? handlers : null;
+        this.apiHandlersCache.set(filePath, actionResult);
+        return actionResult;
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

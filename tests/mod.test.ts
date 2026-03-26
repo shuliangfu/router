@@ -142,6 +142,26 @@ describe("Router", () => {
       expect(apiRoutes.length).toBeGreaterThan(0);
     });
 
+    /**
+     * 页面路由仅 .tsx/.jsx；routes 下非 api 的 .ts/.js 应忽略（工具模块、共享常量等）。
+     */
+    it("非 api 路径下的 .ts / .js 不应注册为路由", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "route-utils.ts"),
+        "export const n = 1;",
+      );
+      await writeTextFile(
+        join(testRoutesDir, "legacy.js"),
+        "export default 1;",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+      const files = router.getRoutes().map((r) => r.file);
+      expect(files.some((f) => f.endsWith("route-utils.ts"))).toBe(false);
+      expect(files.some((f) => f.endsWith("legacy.js"))).toBe(false);
+    });
+
     it("应该扫描通配符路由", async () => {
       await setupTestRoutes();
       await mkdir(join(testRoutesDir, "posts"), { recursive: true });

@@ -7,6 +7,54 @@
 
 ---
 
+## [1.1.3] - 2026-03-26
+
+### 新增
+
+- **`src/core.ts`**：服务端 **`Router`** 与 **`ClientRouter`** 共用的路径匹配与
+  scan 排序逻辑 — **`buildRouteMatchPrep`** / **`matchRoutePattern`**（预切分
+  path 段、wildcard/optional 基路径，减少每次 **`match`** 上的重复
+  **`split`**），以及
+  **`buildRouteSpecificityTuple`**、**`compareSpecificityTuples`**、
+  **`compareRoutesForScanOrder`**，用于「更具体的路由优先」的稳定排序。
+- **`tests/specificity-sort.test.ts`**：元组优先级、两两比较及 **`Router.scan`**
+  集成测试 — 例如静态 **`/blog/new`** 排在动态 **`/blog/:slug`** 之前，使
+  **`match("/blog/new")`** 命中静态路由；API 树下 **`/api/v1/health`** 优先于
+  **`/api/v1/:id`**。
+- **`tests/client.test.ts`**：覆盖 **`addRoute`** 后重排，以及手写路由顺序下静态
+  **`/blog/new`** 仍优先于 **`/blog/:slug`**。
+- **`tests/mod.test.ts`**：非 **`api`** 路径下的 **`.ts` / `.js`**
+  文件不应注册为 页面路由。
+
+### 变更
+
+- **`Router.scan()`**：收集路由后按 **`compareRoutesForScanOrder`** 排序 — 非
+  API 整体先于 API；同块内按特异性降序（静态 > 动态 > 可选 >
+  通配；字面量段优先于 **`:param`** 段）；相同则按 **`path`
+  字典序**。静态与动态兄弟路由的胜负不再依赖 **`readdir`** 顺序。
+- **`Router`**：注册时为每条路由写入 **`routeMatchPrepByFullPath`**；
+  **`matchRouteToPath`** 使用 **`matchRoutePattern`**。
+- **`ClientRouter`**：构造时用 **`WeakMap`**（**`routeMatchPrepByRoute`**）缓存
+  prep，构造结束调用 **`sortRoutesForMatchOrder()`**；**`addRoute`** 后更新 prep
+  并重排，使客户端匹配顺序与服务端 **`scan()`** 一致。
+- **扫描规则**：页面路由仅 **`.tsx` / `.jsx`**；**`api/`**（或路径含 **`api`**）
+  下仍支持 **`.ts`、`.js`、`.tsx`、`.jsx`** 作为 handler。
+- **`parseRoutePath`**：去扩展名时包含 **`.js` / `.jsx`**。
+- **`getRawClientRoutes`**：组件路径仅去掉 **`.tsx` / `.jsx`**（与页面扩展名策略
+  一致）。
+- **`loadApiHandlers`**：按 **`filePath`**
+  缓存解析结果（**`apiHandlersCache`**）； 在 **`clearCache`**（全量或单文件）与
+  **`scan`** 时失效。
+
+### 修复
+
+- 当动态页（如 **`blog/[slug].tsx`**）在文件系统遍历中先于静态页（如
+  **`blog/new.tsx`**）出现时，可能错误命中动态路由；现按特异性排序决定匹配顺序。
+- 与页面同目录的 **`.ts` / `.js`** 工具文件曾被当作页面路由注册；现除非为 API
+  路由文件，否则忽略。
+
+---
+
 ## [1.1.2] - 2026-03-23
 
 ### 新增

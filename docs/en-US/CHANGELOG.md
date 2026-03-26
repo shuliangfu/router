@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.3] - 2026-03-26
+
+### Added
+
+- **`src/core.ts`**: Shared matching and scan-order logic for **`Router`** and
+  **`ClientRouter`** — **`buildRouteMatchPrep`** / **`matchRoutePattern`**
+  (pre-split route segments and wildcard/optional bases to avoid repeating
+  **`split("/")`** on every **`match`**), plus **`buildRouteSpecificityTuple`**,
+  **`compareSpecificityTuples`**, and **`compareRoutesForScanOrder`** for
+  deterministic “more specific route first” ordering.
+- **`tests/specificity-sort.test.ts`**: Covers tuple ranking, pairwise
+  **`compareRoutesForScanOrder`**, and **`Router.scan`** integration — e.g.
+  **`/blog/new`** (static) ordered before **`/blog/:slug`** so
+  **`match("/blog/new")`** hits the static route; API tree case where
+  **`/api/v1/health`** wins over **`/api/v1/:id`**.
+- **`tests/client.test.ts`**: Asserts **`ClientRouter`** re-sorts after
+  **`addRoute`** and that a static **`/blog/new`** beats a dynamic
+  **`/blog/:slug`** even when routes are registered in the “wrong” order.
+- **`tests/mod.test.ts`**: Ensures non-API **`.ts`** / **`.js`** files under the
+  routes directory are **not** registered as page routes.
+
+### Changed
+
+- **`Router.scan()`**: After collecting routes, sorts them with
+  **`compareRoutesForScanOrder`** — non-API routes before API routes; within
+  each block, higher specificity first (static > dynamic > optional > wildcard;
+  literal path segments rank above **`:param`** segments); ties broken by
+  **`path.localeCompare`**. Result no longer depends on filesystem **`readdir`**
+  order when static and dynamic siblings compete.
+- **`Router`**: Stores **`RouteMatchPrep | null`** per **`fullPath`**
+  (**`routeMatchPrepByFullPath`**) at registration; **`matchRouteToPath`**
+  delegates to **`matchRoutePattern`**.
+- **`ClientRouter`**: Precomputes prep per route in a **`WeakMap`**
+  (**`routeMatchPrepByRoute`**), runs **`sortRoutesForMatchOrder()`** in the
+  constructor, and re-sorts after **`addRoute`** so client match order mirrors
+  server **`scan()`**.
+- **Route file discovery**: Page routes are only **`.tsx`** / **`.jsx`**; under
+  **`api/`** (or paths containing **`api`**) **`.ts`**, **`.js`**, **`.tsx`**,
+  and **`.jsx`** remain valid API handlers.
+- **`parseRoutePath`**: Strips **`.js`** / **`.jsx`** when deriving the route
+  name (in addition to **`.ts`** / **`.tsx`**).
+- **`getRawClientRoutes`**: Component paths strip **`.tsx`** / **`.jsx`** only
+  (page routes no longer use plain **`.ts`** as entries).
+- **`loadApiHandlers`**: Caches successful parse results per **`filePath`**
+  (**`apiHandlersCache`**); cache is cleared on full or per-file
+  **`clearCache`** and on **`scan`**.
+
+### Fixed
+
+- Dynamic page routes (e.g. **`blog/[slug].tsx`**) could win over static
+  siblings (e.g. **`blog/new.tsx`**) when the OS listed the dynamic file first;
+  ordering is now by specificity, not scan order.
+- Utility **`.ts`** / **`.js`** files co-located with page routes were
+  previously treated as routes; they are ignored unless they are API route
+  files.
+
+---
+
 ## [1.1.2] - 2026-03-23
 
 ### Added

@@ -5,7 +5,7 @@
  *
  * 功能特性：
  * - 客户端路由导航：基于浏览器原生 API 的路由导航
- * - 路由匹配：客户端路由匹配和参数解析
+ * - 路由匹配：客户端路由匹配和参数解析；构造与 addRoute 后按与服务端 scan 相同的特异性排序
  * - 历史记录管理：前进、后退、历史记录管理
  * - 路由守卫：路由变化前后的钩子函数
  * - 路由变化监听：监听路由变化事件
@@ -34,6 +34,13 @@
  * await router.navigate("/about");
  * ```
  */
+
+import {
+  buildRouteMatchPrep,
+  compareRoutesForScanOrder,
+  matchRoutePattern,
+  type RouteMatchPrep,
+} from "../core.ts";
 
 // ============================================================================
 // 类型定义
@@ -305,6 +312,11 @@ export class ClientRouter {
   private scrollPositionOrder: string[] = [];
   /** 组件缓存访问顺序（用于 LRU 淘汰） */
   private componentCacheOrder: string[] = [];
+  /** 每条 ClientRoute 的匹配预计算（与 match-route-core 对齐） */
+  private routeMatchPrepByRoute = new WeakMap<
+    ClientRoute,
+    RouteMatchPrep | null
+  >();
   private isStarted = false;
   private navigationState: NavigationState = "idle";
   private currentNavigationId = 0;
@@ -324,6 +336,16 @@ export class ClientRouter {
       interceptLinks: options.interceptLinks !== false,
     };
 
+    for (const route of this.routes) {
+      this.routeMatchPrepByRoute.set(
+        route,
+        buildRouteMatchPrep(route.path, route.type),
+      );
+    }
+
+    // 与服务端 Router.scan() 后顺序一致：静态优先于动态/通配，避免手写 routes 顺序错误
+    this.sortRoutesForMatchOrder();
+
     // 监听浏览器历史记录变化
     this.setupHistoryListener();
 
@@ -338,6 +360,19 @@ export class ClientRouter {
     if (this.options.debug) {
       console.log(`[@dreamer/router/client:${prefix}]`, ...args);
     }
+  }
+
+  /**
+   * 按与服务端 `Router.scan()` 相同的特异性规则排序 `this.routes`。
+   * 客户端条目无 API 路由，比较时一律 `isApi: false`；`type` 缺省视为 `static`。
+   */
+  private sortRoutesForMatchOrder(): void {
+    this.routes.sort((a, b) =>
+      compareRoutesForScanOrder(
+        { path: a.path, type: a.type ?? "static", isApi: false },
+        { path: b.path, type: b.type ?? "static", isApi: false },
+      )
+    );
   }
 
   // ==========================================================================
@@ -770,6 +805,11 @@ export class ClientRouter {
    */
   addRoute(route: ClientRoute): void {
     this.routes.push(route);
+    this.routeMatchPrepByRoute.set(
+      route,
+      buildRouteMatchPrep(route.path, route.type),
+    );
+    this.sortRoutesForMatchOrder();
   }
 
   /**
@@ -1367,54 +1407,18 @@ export class ClientRouter {
     route: ClientRoute,
     pathname: string,
   ): { params: Record<string, string> } | null {
-    const routePath = route.path;
-    const params: Record<string, string> = {};
-
-    // 静态路由
-    if (route.type === "static" || !route.type) {
-      return routePath === pathname ? { params } : null;
+    let prep = this.routeMatchPrepByRoute.get(route);
+    if (prep === undefined) {
+      prep = buildRouteMatchPrep(route.path, route.type);
+      this.routeMatchPrepByRoute.set(route, prep);
     }
-
-    const routeParts = routePath.split("/").filter(Boolean);
-    const pathParts = pathname.split("/").filter(Boolean);
-
-    // 通配符路由
-    if (route.type === "wildcard") {
-      const prefix = routePath.replace("/*", "");
-      if (pathname.startsWith(prefix)) {
-        const rest = pathname.slice(prefix.length);
-        params["*"] = rest;
-        return { params };
-      }
-      return null;
-    }
-
-    // 可选参数路由
-    if (route.type === "optional") {
-      const basePath = routePath.replace(/\/:[^?]+(\?)?$/, "");
-      if (pathname === basePath) {
-        return { params };
-      }
-    }
-
-    // 动态路由匹配
-    if (routeParts.length !== pathParts.length) {
-      return null;
-    }
-
-    for (let i = 0; i < routeParts.length; i++) {
-      const routePart = routeParts[i];
-      const pathPart = pathParts[i];
-
-      if (routePart.startsWith(":")) {
-        const paramName = routePart.replace(/^:/, "").replace(/\?$/, "");
-        params[paramName] = pathPart;
-      } else if (routePart !== pathPart) {
-        return null;
-      }
-    }
-
-    return { params };
+    const params = matchRoutePattern(
+      route.path,
+      pathname,
+      route.type,
+      prep,
+    );
+    return params !== null ? { params } : null;
   }
 
   /**

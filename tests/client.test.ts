@@ -383,6 +383,50 @@ describe("ClientRouter - 动态路由管理", () => {
     expect(removed).toBe(false);
   });
 
+  /**
+   * 构造与 addRoute 后都会按服务端 scan 相同规则排序：静态 /blog/new 应优先于 /blog/:slug
+   */
+  it("addRoute 后特异性排序：/blog/new 应匹配静态而非动态", () => {
+    const router = createRouter({
+      routes: [{ path: "/", component: "index", type: "static" }],
+    });
+    router.addRoute({
+      path: "/blog/:slug",
+      component: "blog/[slug]",
+      type: "dynamic",
+    });
+    router.addRoute({
+      path: "/blog/new",
+      component: "blog/new",
+      type: "static",
+    });
+    const m = router.match("/blog/new");
+    expect(m?.route.path).toBe("/blog/new");
+    expect(m?.route.type).toBe("static");
+    const m2 = router.match("/blog/other");
+    expect(m2?.route.path).toBe("/blog/:slug");
+  });
+
+  it("手写 routes 顺序与 scan 无关时仍应先匹配更具体路由", () => {
+    const router = createRouter({
+      routes: [
+        { path: "/", component: "index", type: "static" },
+        // 故意先动态后静态（字典序常见）
+        {
+          path: "/blog/:slug",
+          component: "blog/[slug]",
+          type: "dynamic",
+        },
+        {
+          path: "/blog/new",
+          component: "blog/new",
+          type: "static",
+        },
+      ],
+    });
+    expect(router.match("/blog/new")?.route.path).toBe("/blog/new");
+  });
+
   it("应该能匹配动态添加的路由", () => {
     const router = createRouter({ routes: [] });
     router.addRoute({ path: "/dynamic", component: "dynamic", type: "static" });

@@ -7,7 +7,7 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-146%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-179%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 **Changelog**: [English](./docs/en-US/CHANGELOG.md) |
 [中文 (Chinese)](./docs/zh-CN/CHANGELOG.md)
@@ -89,6 +89,10 @@ import { createRouter } from "jsr:@dreamer/router/client";
   - `_404.tsx`: 404 page (optional)
   - `_error.tsx`: Error page (optional)
   - `_middleware.ts`: Route middleware (optional)
+- **Page vs API extensions**: Non-API **page** files must be **`.tsx`** or
+  **`.jsx`**. **`.ts`** / **`.js`** elsewhere under `routes/` are skipped (e.g.
+  shared modules). Paths that include **`api/`** may use **`.ts`**, **`.js`**,
+  **`.tsx`**, or **`.jsx`** for API handlers.
 - **Redirect config**: Route-level redirect rules
 - **Middleware chain**: Chained middleware execution
 - **Route metadata**: Custom metadata per route
@@ -572,29 +576,30 @@ type RouterMode = "history" | "hash";
 
 ## 📊 Test Report
 
-| Metric      | Value      |
-| ----------- | ---------- |
-| Total tests | 146        |
-| Passed      | 146        |
-| Failed      | 0          |
-| Pass rate   | 100%       |
-| Test date   | 2026-02-17 |
-| Duration    | ~3s        |
+| Metric      | Value                                    |
+| ----------- | ---------------------------------------- |
+| Total tests | 179 (Deno); Bun reports 176 (same files) |
+| Passed      | 179 / 176                                |
+| Failed      | 0                                        |
+| Pass rate   | 100%                                     |
+| Test date   | 2026-03-24                               |
+| Duration    | ~10s (Deno), ~13s (Bun)                  |
 
 ### Runtime Compatibility
 
-| Runtime | Tests | Passed | Status |
-| ------- | ----- | ------ | ------ |
-| Deno    | 146   | 146    | ✅     |
-| Bun     | 146   | 146    | ✅     |
+| Runtime | Tests (reported) | Passed | Status |
+| ------- | ---------------- | ------ | ------ |
+| Deno    | 179              | 179    | ✅     |
+| Bun     | 176              | 176    | ✅     |
 
 ### Test File Coverage
 
-| Test file              | Count | Coverage                                                               |
-| ---------------------- | ----- | ---------------------------------------------------------------------- |
-| client-browser.test.ts | 28    | Browser: navigation, guards, link interception, history                |
-| client.test.ts         | 84    | Client unit: route matching, metadata, basePath, hash mode, link types |
-| mod.test.ts            | 34    | Server: scan, match, redirect, middleware                              |
+| Test file                | Count | Coverage                                                                                   |
+| ------------------------ | ----- | ------------------------------------------------------------------------------------------ |
+| client-browser.test.ts   | 28    | Browser: navigation, guards, link interception, history                                    |
+| client.test.ts           | 94    | Client: match, metadata, basePath, hash mode, link types, specificity sort, SSR-safe hooks |
+| mod.test.ts              | 43    | Server: scan, match, layouts, redirect, middleware, bundle-path heuristic                  |
+| specificity-sort.test.ts | 14    | Core specificity tuples + `Router.scan` integration                                        |
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
@@ -657,12 +662,13 @@ navigation):
 
 ## 📋 Changelog
 
-**v1.1.2** (2026-03-23): **Added** — **`isLikelyClientBundledAssetPath`** +
-early **`Router.match`** skip for client bundle URLs; client intercept resolves
-**`<a>`** via **`composedPath`** (Shadow DOM);
-**`normalizeAnchorTargetAttribute`** for bogus **`"undefined"`** targets;
-**debug** skip reasons. **Changed** — **`@dreamer/esbuild` ^1.1.6**. Full
-history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.3** (2026-03-26): **Added** — Shared **`src/core.ts`** matching +
+scan-order helpers; specificity tests. **Changed** — **`Router.scan`** /
+**`ClientRouter`** sort routes by specificity (static before dynamic, pages
+before API); page scan only **`.tsx`/`.jsx`**; **`matchRoutePattern`** + prep
+cache; API handler parse cache. **Fixed** — static siblings no longer lose to
+dynamic routes due to **`readdir`** order; stray **`.ts`/`.js`** in page trees
+ignored. Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

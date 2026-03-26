@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-146%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-179%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -78,6 +78,10 @@ import { createRouter } from "jsr:@dreamer/router/client";
   - `_404.tsx`：404 页面（可选）
   - `_error.tsx`：错误页面（可选）
   - `_middleware.ts`：路由中间件（可选）
+- **页面与 API 扩展名**：非 API 的**页面**路由仅注册
+  **`.tsx`、`.jsx`**；`routes/` 下其余 **`.ts`、`.js`**（不在 **`api/`**
+  路径段内）不参与路由扫描，可作共享模块。路径含 **`api/`** 的 **API
+  路由**仍可使用 **`.ts`、`.js`** 或 **`.tsx`、`.jsx`** 作为 handler。
 - **重定向配置**：路由级别的重定向规则
 - **中间件链**：多个中间件链式执行
 - **路由元数据**：为路由添加自定义元数据
@@ -560,29 +564,30 @@ type RouterMode = "history" | "hash";
 
 ## 📊 测试报告
 
-| 指标     | 数值       |
-| -------- | ---------- |
-| 总测试数 | 146        |
-| 通过     | 146        |
-| 失败     | 0          |
-| 通过率   | 100%       |
-| 测试时间 | 2026-02-17 |
-| 执行时间 | ~3s        |
+| 指标     | 数值                                  |
+| -------- | ------------------------------------- |
+| 总测试数 | 179（Deno）；Bun 报告 176（同源文件） |
+| 通过     | 179 / 176                             |
+| 失败     | 0                                     |
+| 通过率   | 100%                                  |
+| 测试日期 | 2026-03-24                            |
+| 执行时间 | 约 10s（Deno）、约 13s（Bun）         |
 
 ### 运行时兼容性
 
-| 运行时 | 测试数 | 通过 | 状态 |
-| ------ | ------ | ---- | ---- |
-| Deno   | 146    | 146  | ✅   |
-| Bun    | 146    | 146  | ✅   |
+| 运行时 | 测试数（报告值） | 通过 | 状态 |
+| ------ | ---------------- | ---- | ---- |
+| Deno   | 179              | 179  | ✅   |
+| Bun    | 176              | 176  | ✅   |
 
 ### 测试文件覆盖
 
-| 测试文件               | 测试数量 | 覆盖内容                                                   |
-| ---------------------- | -------- | ---------------------------------------------------------- |
-| client-browser.test.ts | 28       | 浏览器测试：导航、守卫、链接拦截、历史操作                 |
-| client.test.ts         | 84       | 客户端单元测试：路由匹配、元数据、basePath、hash、链接形式 |
-| mod.test.ts            | 34       | 服务端测试：扫描、匹配、重定向、中间件                     |
+| 测试文件                 | 测试数量 | 覆盖内容                                                                   |
+| ------------------------ | -------- | -------------------------------------------------------------------------- |
+| client-browser.test.ts   | 28       | 浏览器：导航、守卫、链接拦截、历史操作                                     |
+| client.test.ts           | 94       | 客户端：匹配、元数据、basePath、hash、链接形式、特异性排序、SSR 安全 Hooks |
+| mod.test.ts              | 43       | 服务端：扫描、匹配、布局链、重定向、中间件、bundle 路径启发式              |
+| specificity-sort.test.ts | 14       | 核心特异性元组与 `Router.scan` 集成                                        |
 
 详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
@@ -644,11 +649,13 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.1.2**（2026-03-23）：**新增** — **`isLikelyClientBundledAssetPath`** 与
-**`Router.match`** 对客户端 bundle URL 快速返回；链接拦截支持
-**`composedPath`**（Shadow DOM）；**`normalizeAnchorTargetAttribute`** 纠正错误
-**`target`** 字符串；**`debug`** 下记录跳过拦截原因。**变更** —
-**`@dreamer/esbuild` ^1.1.6**。详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.3**（2026-03-26）：**新增** — 共用模块 **`src/core.ts`**（匹配与 scan
+特异性 排序）及配套测试。**变更** — **`Router.scan`** / **`ClientRouter`**
+按特异性稳定 排序（静态优先于动态、页面块先于 API）；页面仅扫描
+**`.tsx`/`.jsx`**；热路径使用 **`matchRoutePattern`** 与预计算缓存；API handler
+解析结果缓存。**修复** — 静态 兄弟路由不再因 **`readdir`**
+顺序输给动态段；页面目录下工具 **`.ts`/`.js`** 不再 误注册为路由。详见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
