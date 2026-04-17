@@ -7,6 +7,30 @@
 
 ---
 
+## [1.1.4] - 2026-04-17
+
+### 新增
+
+- **`Route.matchPrep`**：每条 **`Route`** 上可选的 **`RouteMatchPrep | null`**，
+  同一磁盘文件对应多条路由时不再共用错误的预计算（例如 API **`index`** 与显式
+  **`index/:method`** 并存）。
+
+### 变更
+
+- **`Router`**：移除按 **`fullPath`** 的 **`routeMatchPrepByFullPath`** 映射；
+  **`matchRouteToPath`** 改为使用当前匹配 **`Route`** 上的 **`matchPrep`**。
+- **API `index` 文件**：扫描 **`api/.../index.ts`**（或 **`.js`**）时，额外注册
+  **`/api/.../index/:method`**，使 **`POST /api/auth/index/login`**
+  等与同模块导出 对齐（配合 **`apiMode: "action"`** 与服务端 **`RouterAdapter`**
+  的 **`params.method`**）。
+
+### 测试
+
+- **`tests/mod.test.ts`**：覆盖 **`/api/.../index/:method`** 注册及对
+  **`/api/auth/index/login`** 的 **`match`**。
+
+---
+
 ## [1.1.3] - 2026-03-26
 
 ### 新增

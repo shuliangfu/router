@@ -649,13 +649,9 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.1.3**（2026-03-26）：**新增** — 共用模块 **`src/core.ts`**（匹配与 scan
-特异性 排序）及配套测试。**变更** — **`Router.scan`** / **`ClientRouter`**
-按特异性稳定 排序（静态优先于动态、页面块先于 API）；页面仅扫描
-**`.tsx`/`.jsx`**；热路径使用 **`matchRoutePattern`** 与预计算缓存；API handler
-解析结果缓存。**修复** — 静态 兄弟路由不再因 **`readdir`**
-顺序输给动态段；页面目录下工具 **`.ts`/`.js`** 不再 误注册为路由。详见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.4**（2026-04-17）：**新增** 每条路由上的 **`matchPrep`**。**变更** 服务端
+**`Router`** 按 **`Route.matchPrep`** 匹配；**`api/.../index`** 额外注册
+**`/api/.../index/:method`**。详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

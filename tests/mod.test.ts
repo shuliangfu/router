@@ -143,6 +143,39 @@ describe("Router", () => {
     });
 
     /**
+     * api 下各目录的 index.ts 除 `/api/foo` 外注册 `/api/foo/index/:method`，供显式 URL（如 `/api/auth/index/login`）与同文件导出对齐。
+     */
+    it("API index.ts 应额外注册显式路径 /api/.../index/:method", async () => {
+      await setupTestRoutes();
+      await mkdir(join(testRoutesDir, "api", "auth"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "api", "auth", "index.ts"),
+        "export async function login() { return new Response('login'); }",
+      );
+
+      const router = new Router({
+        routesDir: testRoutesDir,
+        apiMode: "action",
+      });
+      await router.scan();
+
+      const apiRoutes = router.getRoutes().filter((r) => r.isApi);
+      expect(
+        apiRoutes.some((r) => r.path === "/api/auth/index/:method"),
+      ).toBe(true);
+      expect(apiRoutes.some((r) => r.path === "/api/auth")).toBe(true);
+
+      const match = await router.match("/api/auth/index/login", {
+        method: "POST",
+      });
+      expect(match).toBeTruthy();
+      if (match) {
+        expect(match.params.method).toBe("login");
+        expect(match.handlers?.login).toBeTruthy();
+      }
+    });
+
+    /**
      * 页面路由仅 .tsx/.jsx；routes 下非 api 的 .ts/.js 应忽略（工具模块、共享常量等）。
      */
     it("非 api 路径下的 .ts / .js 不应注册为路由", async () => {

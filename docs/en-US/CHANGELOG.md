@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.4] - 2026-04-17
+
+### Added
+
+- **`Route.matchPrep`**: Optional **`RouteMatchPrep | null`** stored on each
+  **`Route`** so multiple routes from the same disk file do not share one
+  incorrect prep (e.g. API **`index`** plus an explicit **`index/:method`**
+  route).
+
+### Changed
+
+- **`Router`**: Removed **`routeMatchPrepByFullPath`**; **`matchRouteToPath`**
+  uses **`route.matchPrep`** from the matched **`Route`**.
+- **API `index` files**: When scanning **`api/.../index.ts`** (or **`.js`**),
+  also registers **`/api/.../index/:method`** so action-style URLs such as
+  **`POST /api/auth/index/login`** align with exports from the same module (with
+  **`apiMode: "action"`** and server **`RouterAdapter`** **`params.method`**).
+
+### Tests
+
+- **`tests/mod.test.ts`**: Covers extra **`/api/.../index/:method`**
+  registration and **`match`** for **`/api/auth/index/login`**.
+
+---
+
 ## [1.1.3] - 2026-03-26
 
 ### Added

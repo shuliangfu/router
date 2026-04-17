@@ -147,6 +147,11 @@ export interface Route {
   specialType?: "_app" | "_layout" | "_404" | "_error" | "_middleware";
   /** 路由元数据 */
   meta?: RouteMeta;
+  /**
+   * 路径匹配预计算（与同 Route 的 path/type 对应）。
+   * 同一磁盘文件可对应多条 Route（例如 api 下各目录的 index.ts 同时注册 `/api/foo` 与 `/api/foo/index/:method`），不可按 fullPath 共用一份 prep。
+   */
+  matchPrep?: RouteMatchPrep | null;
 }
 
 /**
@@ -243,8 +248,6 @@ export class Router {
   private moduleCache: Map<string, any> = new Map();
   /** 模块缓存访问顺序（用于 LRU 淘汰） */
   private moduleCacheOrder: string[] = [];
-  /** 按 fullPath 缓存路径匹配预计算（scan 时写入，减少 match 热路径 split） */
-  private routeMatchPrepByFullPath = new Map<string, RouteMatchPrep | null>();
   /**
    * API 文件已解析的 handlers 缓存（与 loadModule 分离；clearCache/scan 时失效）
    */
@@ -303,7 +306,6 @@ export class Router {
     // 清除缓存和 LRU 顺序
     this.moduleCache.clear();
     this.moduleCacheOrder = [];
-    this.routeMatchPrepByFullPath.clear();
     this.apiHandlersCache.clear();
 
     try {
@@ -829,8 +831,9 @@ export class Router {
 
     // 解析路由路径和类型（传入规范化路径，确保 route.path 正确）
     const routeInfo = this.parseRoutePath(normalizedPath, fileName, isApi);
+    const nameWithoutExt = fileName.replace(/\.(tsx|ts|jsx|js)$/, "");
 
-    // 创建路由对象
+    // 创建路由对象（每条 Route 自带 matchPrep，避免同一文件多路由时覆盖预计算）
     const route: Route = {
       path: routeInfo.path,
       file: routeInfo.file,
@@ -838,13 +841,28 @@ export class Router {
       type: routeInfo.type,
       isApi: isApi,
       isSpecial: false,
+      matchPrep: buildRouteMatchPrep(routeInfo.path, routeInfo.type),
     };
 
     this.routes.push(route);
-    this.routeMatchPrepByFullPath.set(
-      fullPath,
-      buildRouteMatchPrep(route.path, route.type),
-    );
+
+    /**
+     * API 目录下的 `index.ts` 除原有 `/api/...` 外，再注册显式路径 `/api/.../index/:method`，
+     * 便于 `POST /api/auth/index/login` 与同文件导出 `login` 对齐（与 `apiMode: "action"`、RouterAdapter 的 `params.method` 配合）。
+     */
+    if (isApiRouteFile && nameWithoutExt === "index" && normalizedPath) {
+      const explicitIndexPath = `/${normalizedPath}/index/:method`;
+      const routeExplicitIndex: Route = {
+        path: explicitIndexPath,
+        file: routeInfo.file,
+        fullPath: fullPath,
+        type: "dynamic",
+        isApi: true,
+        isSpecial: false,
+        matchPrep: buildRouteMatchPrep(explicitIndexPath, "dynamic"),
+      };
+      this.routes.push(routeExplicitIndex);
+    }
   }
 
   /**
@@ -988,7 +1006,7 @@ export class Router {
     route: Route,
     pathname: string,
   ): { params: Record<string, string> } | null {
-    const prep = this.routeMatchPrepByFullPath.get(route.fullPath) ?? null;
+    const prep = route.matchPrep ?? null;
     const params = matchRoutePattern(route.path, pathname, route.type, prep);
     return params !== null ? { params } : null;
   }
