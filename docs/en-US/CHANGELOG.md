@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.7] - 2026-04-21
+
+### Added
+
+- **`src/client/nav-match.ts`** (re-exported from **`@dreamer/router/client`**):
+  **`normalizePathname`** and **`isNavActive`** for navigation highlighting
+  using the current pathname alone (no **`ClientRouter`** instance required).
+
+### Changed
+
+- **`Router.scan`**: When an API route file maps to a **static** path without
+  dynamic segments (e.g. **`routes/api/auth.ts`** → **`/api/auth`**), also
+  register **`/api/auth/:method`** so **`POST /api/auth/login`** resolves with
+  **`apiMode: "action"`**, alongside existing **`api/.../index/:method`**
+  registration for **`index.ts`** bundles.
+- **`ClientRouter`**: **`loadComponent`** rewritten with **`async`/`await`**
+  (behavior unchanged).
+
+### Tests
+
+- **`tests/nav-match.test.ts`**: Covers **`normalizePathname`** /
+  **`isNavActive`**.
+- **`tests/mod.test.ts`**: Covers **`/api/auth/:method`** registration and
+  **`match`** for **`/api/auth/login`** on a flat **`api/auth.ts`** file.
+- **`tests/client.test.ts`**: Extended coverage (prefetch / **`loadComponent`**
+  helpers and related guard rails).
+
+---
+
 ## [1.1.4] - 2026-04-17
 
 ### Added

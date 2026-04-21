@@ -7,18 +7,18 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-179%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-193%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 **Changelog**: [English](./docs/en-US/CHANGELOG.md) |
 [中文 (Chinese)](./docs/zh-CN/CHANGELOG.md)
 
-### [1.1.4] - 2026-04-17
+### [1.1.7] - 2026-04-21
 
-- **Added**: Per-route **`Route.matchPrep`** (same file, multiple routes).
-- **Changed**: **`Router`** uses **`route.matchPrep`** instead of a
-  **`fullPath`** map; API **`api/.../index`** files also register
-  **`/api/.../index/:method`** for action-style URLs. See
-  [CHANGELOG](./docs/en-US/CHANGELOG.md).
+- **Added**: **`normalizePathname`** / **`isNavActive`**
+  (**`@dreamer/router/client`**) for nav highlighting.
+- **Changed**: **`Router.scan`** registers **`/api/foo/:method`** for flat API
+  files (**`routes/api/foo.ts`**); **`loadComponent`** uses **`async`/`await`**.
+  See [CHANGELOG](./docs/en-US/CHANGELOG.md).
 
 ---
 
@@ -578,30 +578,31 @@ type RouterMode = "history" | "hash";
 
 ## 📊 Test Report
 
-| Metric      | Value                                    |
-| ----------- | ---------------------------------------- |
-| Total tests | 179 (Deno); Bun reports 176 (same files) |
-| Passed      | 179 / 176                                |
-| Failed      | 0                                        |
-| Pass rate   | 100%                                     |
-| Test date   | 2026-03-24                               |
-| Duration    | ~10s (Deno), ~13s (Bun)                  |
+| Metric      | Value                                                |
+| ----------- | ---------------------------------------------------- |
+| Total tests | 193 (Deno); Bun reports 189 (same files)             |
+| Passed      | 193 / 189                                            |
+| Failed      | 0                                                    |
+| Pass rate   | 100%                                                 |
+| Test date   | 2026-04-21                                           |
+| Duration    | ~31s full suite (Deno / Bun; includes browser tests) |
 
 ### Runtime Compatibility
 
 | Runtime | Tests (reported) | Passed | Status |
 | ------- | ---------------- | ------ | ------ |
-| Deno    | 179              | 179    | ✅     |
-| Bun     | 176              | 176    | ✅     |
+| Deno    | 193              | 193    | ✅     |
+| Bun     | 189              | 189    | ✅     |
 
 ### Test File Coverage
 
-| Test file                | Count | Coverage                                                                                   |
-| ------------------------ | ----- | ------------------------------------------------------------------------------------------ |
-| client-browser.test.ts   | 28    | Browser: navigation, guards, link interception, history                                    |
-| client.test.ts           | 94    | Client: match, metadata, basePath, hash mode, link types, specificity sort, SSR-safe hooks |
-| mod.test.ts              | 43    | Server: scan, match, layouts, redirect, middleware, bundle-path heuristic                  |
-| specificity-sort.test.ts | 14    | Core specificity tuples + `Router.scan` integration                                        |
+| Test file                | Count | Coverage                                                                                             |
+| ------------------------ | ----- | ---------------------------------------------------------------------------------------------------- |
+| client-browser.test.ts   | 28    | Browser: navigation, guards, link interception, history                                              |
+| client.test.ts           | 101   | Client: match, prefetch, metadata, basePath, hash mode, link types, specificity sort, SSR-safe hooks |
+| mod.test.ts              | 45    | Server: scan, match, layouts, redirect, middleware, bundle-path heuristic, flat API `:method`        |
+| nav-match.test.ts        | 5     | `normalizePathname`, `isNavActive`                                                                   |
+| specificity-sort.test.ts | 14    | Core specificity tuples + `Router.scan` integration                                                  |
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
@@ -664,13 +665,11 @@ navigation):
 
 ## 📋 Changelog
 
-**v1.1.3** (2026-03-26): **Added** — Shared **`src/core.ts`** matching +
-scan-order helpers; specificity tests. **Changed** — **`Router.scan`** /
-**`ClientRouter`** sort routes by specificity (static before dynamic, pages
-before API); page scan only **`.tsx`/`.jsx`**; **`matchRoutePattern`** + prep
-cache; API handler parse cache. **Fixed** — static siblings no longer lose to
-dynamic routes due to **`readdir`** order; stray **`.ts`/`.js`** in page trees
-ignored. Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.7** (2026-04-21): **Added** — **`nav-match`** helpers on
+**`@dreamer/router/client`**. **Changed** — **`Router.scan`** registers
+**`/api/foo/:method`** for static API files; **`loadComponent`** uses
+**`async`/`await`**. **Tests** — **`nav-match.test.ts`**, extended **`mod`** /
+**`client`** coverage. Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

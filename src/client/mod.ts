@@ -1424,7 +1424,7 @@ export class ClientRouter {
   /**
    * 加载组件（带 LRU 淘汰策略，防止内存泄漏）
    */
-  private loadComponent(component: string): Promise<unknown> {
+  private async loadComponent(component: string): Promise<unknown> {
     this.debugLog(
       "loadComponent",
       "component:",
@@ -1442,30 +1442,27 @@ export class ClientRouter {
       }
       this.componentCacheOrder.push(component);
 
-      return Promise.resolve(this.componentCache.get(component));
+      return this.componentCache.get(component);
     }
 
     if (this.componentLoader) {
-      return this.componentLoader(component).then((module) => {
-        // 添加到缓存和 LRU 顺序
-        this.componentCache.set(component, module);
-        this.componentCacheOrder.push(component);
+      const module = await this.componentLoader(component);
+      // 添加到缓存和 LRU 顺序
+      this.componentCache.set(component, module);
+      this.componentCacheOrder.push(component);
 
-        // LRU 淘汰：超过限制时删除最旧的
-        while (this.componentCache.size > MAX_COMPONENT_CACHE) {
-          const oldest = this.componentCacheOrder.shift();
-          if (oldest) {
-            this.componentCache.delete(oldest);
-          }
+      // LRU 淘汰：超过限制时删除最旧的
+      while (this.componentCache.size > MAX_COMPONENT_CACHE) {
+        const oldest = this.componentCacheOrder.shift();
+        if (oldest) {
+          this.componentCache.delete(oldest);
         }
+      }
 
-        return module;
-      });
+      return module;
     }
 
-    return Promise.reject(
-      new Error(`组件加载功能需要根据构建工具实现: ${component}`),
-    );
+    throw new Error(`组件加载功能需要根据构建工具实现: ${component}`);
   }
 }
 
@@ -1565,6 +1562,12 @@ export function useIsActive(path: string, exact = false): boolean {
   if (!router) return false;
   return router.isActive(path, exact);
 }
+
+// ============================================================================
+// 导航路径匹配（无 Router 实例；与 load 注入的 pathname 配合做顶栏高亮）
+// ============================================================================
+
+export { isNavActive, normalizePathname } from "./nav-match.ts";
 
 // ============================================================================
 // 重新导出组件模块

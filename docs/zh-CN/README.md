@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-179%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-193%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -564,30 +564,31 @@ type RouterMode = "history" | "hash";
 
 ## 📊 测试报告
 
-| 指标     | 数值                                  |
-| -------- | ------------------------------------- |
-| 总测试数 | 179（Deno）；Bun 报告 176（同源文件） |
-| 通过     | 179 / 176                             |
-| 失败     | 0                                     |
-| 通过率   | 100%                                  |
-| 测试日期 | 2026-03-24                            |
-| 执行时间 | 约 10s（Deno）、约 13s（Bun）         |
+| 指标     | 数值                                   |
+| -------- | -------------------------------------- |
+| 总测试数 | 193（Deno）；Bun 报告 189（同源文件）  |
+| 通过     | 193 / 189                              |
+| 失败     | 0                                      |
+| 通过率   | 100%                                   |
+| 测试日期 | 2026-04-21                             |
+| 执行时间 | 全套约 31s（Deno / Bun，含浏览器测试） |
 
 ### 运行时兼容性
 
 | 运行时 | 测试数（报告值） | 通过 | 状态 |
 | ------ | ---------------- | ---- | ---- |
-| Deno   | 179              | 179  | ✅   |
-| Bun    | 176              | 176  | ✅   |
+| Deno   | 193              | 193  | ✅   |
+| Bun    | 189              | 189  | ✅   |
 
 ### 测试文件覆盖
 
-| 测试文件                 | 测试数量 | 覆盖内容                                                                   |
-| ------------------------ | -------- | -------------------------------------------------------------------------- |
-| client-browser.test.ts   | 28       | 浏览器：导航、守卫、链接拦截、历史操作                                     |
-| client.test.ts           | 94       | 客户端：匹配、元数据、basePath、hash、链接形式、特异性排序、SSR 安全 Hooks |
-| mod.test.ts              | 43       | 服务端：扫描、匹配、布局链、重定向、中间件、bundle 路径启发式              |
-| specificity-sort.test.ts | 14       | 核心特异性元组与 `Router.scan` 集成                                        |
+| 测试文件                 | 测试数量 | 覆盖内容                                                                          |
+| ------------------------ | -------- | --------------------------------------------------------------------------------- |
+| client-browser.test.ts   | 28       | 浏览器：导航、守卫、链接拦截、历史操作                                            |
+| client.test.ts           | 101      | 客户端：匹配、预取、元数据、basePath、hash、链接形式、特异性排序、SSR 安全 Hooks  |
+| mod.test.ts              | 45       | 服务端：扫描、匹配、布局链、重定向、中间件、bundle 路径启发式、扁平 API `:method` |
+| nav-match.test.ts        | 5        | `normalizePathname`、`isNavActive`                                                |
+| specificity-sort.test.ts | 14       | 核心特异性元组与 `Router.scan` 集成                                               |
 
 详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
@@ -649,9 +650,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.1.4**（2026-04-17）：**新增** 每条路由上的 **`matchPrep`**。**变更** 服务端
-**`Router`** 按 **`Route.matchPrep`** 匹配；**`api/.../index`** 额外注册
-**`/api/.../index/:method`**。详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.7**（2026-04-21）：**新增**
+**`nav-match`**（**`@dreamer/router/client`**）； **变更**：**`Router.scan`**
+为扁平 API 文件注册 **`/api/foo/:method`**；**`loadComponent`** 改为
+**`async`/`await`**。**测试**：新增 **`nav-match.test.ts`**，扩展 **`mod`** /
+**`client`**。 详见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

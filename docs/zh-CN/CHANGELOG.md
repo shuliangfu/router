@@ -7,6 +7,34 @@
 
 ---
 
+## [1.1.7] - 2026-04-21
+
+### 新增
+
+- **`src/client/nav-match.ts`**（由 **`@dreamer/router/client`** 再导出）：提供
+  **`normalizePathname`**、**`isNavActive`**，用于仅用当前 pathname
+  做导航项高亮，无需 **`ClientRouter`** 实例。
+
+### 变更
+
+- **`Router.scan`**：当单个 API 路由文件映射到无动态段的静态路径（例如
+  **`routes/api/auth.ts`** → **`/api/auth`**）时，额外注册
+  **`/api/auth/:method`**，使 **`POST /api/auth/login`** 可在
+  **`apiMode: "action"`** 下解析；与已有的
+  **`api/.../index/:method`**（**`index.ts`** 打包）规则并存。
+- **`ClientRouter`**：**`loadComponent`** 改为 **`async`/`await`**
+  实现（对外行为不变）。
+
+### 测试
+
+- **`tests/nav-match.test.ts`**：**`normalizePathname`** / **`isNavActive`**。
+- **`tests/mod.test.ts`**：扁平 **`api/auth.ts`** 注册
+  **`/api/auth/:method`**，以及对 **`/api/auth/login`** 的 **`match`**。
+- **`tests/client.test.ts`**：补充客户端相关用例（含 prefetch /
+  **`loadComponent`** 等）。
+
+---
+
 ## [1.1.4] - 2026-04-17
 
 ### 新增

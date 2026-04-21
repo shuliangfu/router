@@ -863,6 +863,32 @@ export class Router {
       };
       this.routes.push(routeExplicitIndex);
     }
+
+    /**
+     * API 单文件（如 `routes/api/auth.ts`）：在静态路径 `/api/auth` 上追加 **`/api/auth/:method`**，
+     * 支持 `POST /api/auth/login` 与导出 `login`（`apiMode: "action"`）。
+     * 与上方 `index.ts` 的 `/api/.../index/:method` 并存，旧链接仍可走带 `index` 的路径。
+     */
+    if (
+      isApiRouteFile &&
+      routeInfo.path.startsWith("/api/") &&
+      !routeInfo.path.includes(":") &&
+      routeInfo.type === "static"
+    ) {
+      const shortActionPath = `${routeInfo.path}/:method`;
+      if (!this.routes.some((r) => r.path === shortActionPath)) {
+        const routeShortAction: Route = {
+          path: shortActionPath,
+          file: routeInfo.file,
+          fullPath: fullPath,
+          type: "dynamic",
+          isApi: true,
+          isSpecial: false,
+          matchPrep: buildRouteMatchPrep(shortActionPath, "dynamic"),
+        };
+        this.routes.push(routeShortAction);
+      }
+    }
   }
 
   /**

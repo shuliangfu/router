@@ -1086,6 +1086,88 @@ describe("ClientRouter - 新功能测试", () => {
       expect(typeof router.prefetch).toBe("function");
     });
   });
+
+  /**
+   * `prefetch` → `loadComponent`：无 loader 时拒绝；有 loader 时缓存 / LRU 在 `loadComponent` 内完成。
+   */
+  describe("prefetch 与组件加载（loadComponent）", () => {
+    it("无 componentLoader 时 prefetch 返回 null", async () => {
+      const router = createRouter({ routes: testRoutes });
+      const result = await router.prefetch("/about");
+      expect(result).toBeNull();
+    });
+
+    it("无匹配路由时 prefetch 返回 null", async () => {
+      const router = createRouter({ routes: testRoutes });
+      router.setComponentLoader(() => Promise.resolve({}));
+      const result = await router.prefetch("/no-such-route-xyz");
+      expect(result).toBeNull();
+    });
+
+    it("componentLoader 抛错时 prefetch 返回 null", async () => {
+      const router = createRouter({ routes: testRoutes });
+      router.setComponentLoader(() => Promise.reject(new Error("load failed")));
+      expect(await router.prefetch("/about")).toBeNull();
+    });
+
+    it("有 componentLoader 时加载模块且同一路径二次 prefetch 只加载一次", async () => {
+      const router = createRouter({ routes: testRoutes });
+      let loadCalls = 0;
+      router.setComponentLoader((name) => {
+        loadCalls++;
+        return Promise.resolve({ default: name });
+      });
+      const m1 = await router.prefetch("/about");
+      const m2 = await router.prefetch("/about");
+      expect(loadCalls).toBe(1);
+      expect(m1).toEqual({ default: "about" });
+      expect(m2).toEqual({ default: "about" });
+    });
+
+    it("不同路径会分别加载对应 route.component", async () => {
+      const router = createRouter({ routes: testRoutes });
+      const seen: string[] = [];
+      router.setComponentLoader((name) => {
+        seen.push(name);
+        return Promise.resolve({ default: name });
+      });
+      await router.prefetch("/about");
+      await router.prefetch("/");
+      expect(seen).toEqual(["about", "index"]);
+    });
+
+    it("clearCache 后再次 prefetch 会重新调用 componentLoader", async () => {
+      const router = createRouter({ routes: testRoutes });
+      let loadCalls = 0;
+      router.setComponentLoader((name) => {
+        loadCalls++;
+        return Promise.resolve({ mod: name });
+      });
+      await router.prefetch("/about");
+      router.clearCache();
+      await router.prefetch("/about");
+      expect(loadCalls).toBe(2);
+    });
+
+    it("clearCache(component) 仅清除该项后该路径会重新加载", async () => {
+      const router = createRouter({ routes: testRoutes });
+      let loadCalls = 0;
+      router.setComponentLoader((name) => {
+        loadCalls++;
+        return Promise.resolve({ mod: name });
+      });
+      await router.prefetch("/about");
+      await router.prefetch("/");
+      expect(loadCalls).toBe(2);
+      /** 仅清除 about 对应组件键 */
+      router.clearCache("about");
+      await router.prefetch("/about");
+      expect(loadCalls).toBe(3);
+      /** index 仍在缓存，不应再加载 */
+      await router.prefetch("/");
+      expect(loadCalls).toBe(3);
+    });
+  });
 });
 
 /**

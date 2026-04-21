@@ -176,6 +176,36 @@ describe("Router", () => {
     });
 
     /**
+     * `routes/api/foo.ts` 除 `/api/foo` 外注册 `/api/foo/:method`，供 `POST /api/foo/login` 与导出 `login` 对齐。
+     */
+    it("API 扁平 auth.ts 应注册 /api/auth/:method 且可匹配 /api/auth/login", async () => {
+      await setupTestRoutes();
+      await mkdir(join(testRoutesDir, "api"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "api", "auth.ts"),
+        "export async function login() { return new Response('login'); }",
+      );
+
+      const router = new Router({
+        routesDir: testRoutesDir,
+        apiMode: "action",
+      });
+      await router.scan();
+
+      const apiRoutes = router.getRoutes().filter((r) => r.isApi);
+      expect(apiRoutes.some((r) => r.path === "/api/auth/:method")).toBe(true);
+
+      const match = await router.match("/api/auth/login", {
+        method: "POST",
+      });
+      expect(match).toBeTruthy();
+      if (match) {
+        expect(match.params.method).toBe("login");
+        expect(match.handlers?.login).toBeTruthy();
+      }
+    });
+
+    /**
      * 页面路由仅 .tsx/.jsx；routes 下非 api 的 .ts/.js 应忽略（工具模块、共享常量等）。
      */
     it("非 api 路径下的 .ts / .js 不应注册为路由", async () => {
