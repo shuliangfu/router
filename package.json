@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/router",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Routing and client router for Deno/Bun.",
   "type": "module",
   "license": "Apache-2.0",

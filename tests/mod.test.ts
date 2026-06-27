@@ -300,6 +300,62 @@ describe("Router", () => {
       }
     });
 
+    it("应匹配嵌套目录动态段下的 index（如 projects/[id]/index.tsx）", async () => {
+      await setupTestRoutes();
+      await mkdir(join(testRoutesDir, "projects", "[id]"), {
+        recursive: true,
+      });
+      await writeTextFile(
+        join(testRoutesDir, "projects", "[id]", "index.tsx"),
+        "export default () => <div>Project</div>;",
+      );
+
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const routes = router.getRoutes();
+      const projectIndex = routes.find(
+        (r) => r.path === "/projects/:id" && !r.isApi,
+      );
+      expect(projectIndex).toBeTruthy();
+      expect(projectIndex?.type).toBe("dynamic");
+
+      const match = await router.match("/projects/507f1f77bcf86cd799439011");
+      expect(match).toBeTruthy();
+      if (match) {
+        expect(match.params.id).toBe("507f1f77bcf86cd799439011");
+      }
+    });
+
+    it("嵌套目录动态段下的静态页应为 dynamic（如 projects/[id]/bible.tsx）", async () => {
+      await setupTestRoutes();
+      await mkdir(join(testRoutesDir, "projects", "[id]"), {
+        recursive: true,
+      });
+      await writeTextFile(
+        join(testRoutesDir, "projects", "[id]", "bible.tsx"),
+        "export default () => <div>Bible</div>;",
+      );
+
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const routes = router.getRoutes();
+      const bible = routes.find(
+        (r) => r.path === "/projects/:id/bible" && !r.isApi,
+      );
+      expect(bible).toBeTruthy();
+      expect(bible?.type).toBe("dynamic");
+
+      const match = await router.match(
+        "/projects/507f1f77bcf86cd799439011/bible",
+      );
+      expect(match).toBeTruthy();
+      if (match) {
+        expect(match.params.id).toBe("507f1f77bcf86cd799439011");
+      }
+    });
+
     it("应该匹配通配符路由", async () => {
       await setupTestRoutes();
       await mkdir(join(testRoutesDir, "posts"), { recursive: true });
@@ -562,6 +618,103 @@ describe("Router", () => {
       expect(router.getLayoutKeysForPath("bgb-x-admin/")).toEqual([
         "_layout",
         "bgb-x-admin/_layout",
+      ]);
+    });
+  });
+
+  describe("getMiddlewarePathsForPath / getMiddlewareKeysForPath (nested middleware)", () => {
+    it("无 _middleware 时应返回空数组", async () => {
+      await setupTestRoutes();
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      expect(router.getMiddlewarePathsForPath("/")).toEqual([]);
+      expect(router.getMiddlewarePathsForPath("/hs-admin")).toEqual([]);
+      expect(router.getMiddlewareKeysForPath("/")).toEqual([]);
+      expect(router.getMiddlewareKeysForPath("/hs-admin")).toEqual([]);
+    });
+
+    it("仅有根 _middleware 时任意路径应只返回根中间件", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "_middleware.ts"),
+        "export default async (_ctx, next) => { await next(); };",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const paths = router.getMiddlewarePathsForPath("/hs-admin");
+      const keys = router.getMiddlewareKeysForPath("/hs-admin");
+      expect(paths.length).toBe(1);
+      expect(keys).toEqual(["_middleware"]);
+      expect(paths[0]).toContain("_middleware");
+    });
+
+    it("有根与 hs-admin/_middleware 时应返回从外到内的链", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "_middleware.ts"),
+        "export default async (_ctx, next) => { await next(); };",
+      );
+      await mkdir(join(testRoutesDir, "hs-admin"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "hs-admin", "_middleware.ts"),
+        "export default async (_ctx, next) => { await next(); };",
+      );
+      await writeTextFile(
+        join(testRoutesDir, "hs-admin", "index.tsx"),
+        "export default () => <div>Admin</div>;",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const nestedKeys = router.getMiddlewareKeysForPath("/hs-admin");
+      expect(nestedKeys).toEqual(["_middleware", "hs-admin/_middleware"]);
+
+      const nestedPaths = router.getMiddlewarePathsForPath("/hs-admin");
+      expect(nestedPaths.length).toBe(2);
+      expect(nestedPaths[0]).toContain("_middleware");
+      expect(nestedPaths[1]).toContain("hs-admin");
+    });
+
+    it("handleRequest 应按外到内顺序执行嵌套中间件", async () => {
+      await setupTestRoutes();
+      const order: string[] = [];
+      await writeTextFile(
+        join(testRoutesDir, "_middleware.ts"),
+        `export default async (_ctx, next) => {
+          globalThis.__mwOrder = globalThis.__mwOrder || [];
+          globalThis.__mwOrder.push("root");
+          return await next();
+        };`,
+      );
+      await mkdir(join(testRoutesDir, "hs-admin"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "hs-admin", "_middleware.ts"),
+        `export default async (_ctx, next) => {
+          globalThis.__mwOrder = globalThis.__mwOrder || [];
+          globalThis.__mwOrder.push("hs-admin");
+          return await next();
+        };`,
+      );
+      await writeTextFile(
+        join(testRoutesDir, "hs-admin", "index.tsx"),
+        "export default () => <div>Admin</div>;",
+      );
+
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      (globalThis as { __mwOrder?: string[] }).__mwOrder = [];
+      const response = await router.handleRequest(
+        new Request("http://localhost/hs-admin"),
+        async () => new Response("ok"),
+      );
+
+      expect(response.status).toBe(200);
+      expect((globalThis as { __mwOrder?: string[] }).__mwOrder).toEqual([
+        "root",
+        "hs-admin",
       ]);
     });
   });

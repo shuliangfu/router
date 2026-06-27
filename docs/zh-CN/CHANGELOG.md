@@ -7,6 +7,29 @@
 
 ---
 
+## [1.1.8] - 2026-06-27
+
+### 新增
+
+- **`Router.getMiddlewarePathsForPath(pathname)`**、
+  **`Router.getMiddlewareKeysForPath(pathname)`**：按 pathname
+  从根到当前路径收集嵌套 **`_middleware.ts`**（外 → 内），与
+  **`getLayoutPathsForPath`** /
+  **`getLayoutKeysForPath`**（**`_layout.tsx`**）规则一致。
+
+### 变更
+
+- **`Router.handleRequest`**：按请求 pathname 加载并执行完整嵌套中间件链（根
+  **`routes/_middleware.ts`** 及各段前缀如
+  **`hs-admin/_middleware.ts`**），不再仅匹配 页面所在目录的一层。
+
+### 测试
+
+- **`tests/mod.test.ts`**：嵌套中间件路径/key 收集及 **`handleRequest`**
+  执行顺序（根 → 子目录）。
+
+---
+
 ## [1.1.7] - 2026-04-21
 
 ### 新增

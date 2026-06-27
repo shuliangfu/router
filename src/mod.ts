@@ -34,7 +34,7 @@
  */
 
 // 导入 runtime-adapter 提供的文件系统 API（兼容 Deno 和 Bun）
-import { cwd, dirname, join, readdir, stat } from "@dreamer/runtime-adapter";
+import { cwd, join, readdir, stat } from "@dreamer/runtime-adapter";
 // 服务端 i18n（错误与日志文案）
 import { $tr, type Locale } from "./i18n.ts";
 import {
@@ -458,8 +458,8 @@ export class Router {
       data: {},
     };
 
-    // 加载路由级别的中间件
-    const routeMiddlewares = await this.loadRouteMiddlewares(match?.route);
+    // 加载路由级别的嵌套中间件链（根 _middleware + 子目录 _middleware，从外到内）
+    const routeMiddlewares = await this.loadRouteMiddlewares(url.pathname);
 
     // 合并全局中间件和路由中间件
     const allMiddlewares = [...this.options.middlewares, ...routeMiddlewares];
@@ -573,6 +573,50 @@ export class Router {
     for (let i = 0; i < segments.length; i++) {
       const prefix = segments.slice(0, i + 1).join("/");
       const key = `${prefix}/_layout`;
+      if (this.specialFiles.has(key)) result.push(key);
+    }
+    return result;
+  }
+
+  /**
+   * 根据路由路径获取从根到该路径的中间件文件完整路径列表（用于嵌套中间件链）
+   * 例如 pathname 为 "/hs-admin" 时返回 [根 _middleware 路径, hs-admin/_middleware 路径]
+   * @param pathname 路由路径（如 "/"、"/hs-admin"、"/user/1"），可有可无前导/尾随斜杠
+   * @returns 中间件文件的完整路径数组，从外到内
+   */
+  getMiddlewarePathsForPath(pathname: string): string[] {
+    const segments = (pathname || "")
+      .replace(/^\/+|\/+$/g, "")
+      .split("/")
+      .filter(Boolean);
+    const result: string[] = [];
+    const rootPath = this.specialFiles.get("_middleware");
+    if (rootPath) result.push(rootPath);
+    for (let i = 0; i < segments.length; i++) {
+      const prefix = segments.slice(0, i + 1).join("/");
+      const key = `${prefix}/_middleware`;
+      const fullPath = this.specialFiles.get(key);
+      if (fullPath) result.push(fullPath);
+    }
+    return result;
+  }
+
+  /**
+   * 根据路由路径获取从根到该路径的中间件在 specialFiles 中的 key 列表（用于客户端按 key 动态加载）
+   * 例如 pathname 为 "/hs-admin" 时返回 ["_middleware", "hs-admin/_middleware"]
+   * @param pathname 路由路径（如 "/"、"/hs-admin"）
+   * @returns 中间件 key 数组，从外到内
+   */
+  getMiddlewareKeysForPath(pathname: string): string[] {
+    const segments = (pathname || "")
+      .replace(/^\/+|\/+$/g, "")
+      .split("/")
+      .filter(Boolean);
+    const result: string[] = [];
+    if (this.specialFiles.has("_middleware")) result.push("_middleware");
+    for (let i = 0; i < segments.length; i++) {
+      const prefix = segments.slice(0, i + 1).join("/");
+      const key = `${prefix}/_middleware`;
       if (this.specialFiles.has(key)) result.push(key);
     }
     return result;
@@ -723,29 +767,28 @@ export class Router {
   }
 
   /**
-   * 加载路由级别的中间件
+   * 按 pathname 加载嵌套路由中间件链（根 _middleware + 各层子目录 _middleware，从外到内）
+   * @param pathname 请求路径（如 "/hs-admin/settings"）
+   * @returns 中间件函数数组，按执行顺序排列
    */
   private async loadRouteMiddlewares(
-    route: Route | null | undefined,
+    pathname: string,
   ): Promise<MiddlewareFunction[]> {
-    if (!route) return [];
-
+    const middlewarePaths = this.getMiddlewarePathsForPath(pathname);
     const middlewares: MiddlewareFunction[] = [];
 
-    // 查找路由目录下的 _middleware.ts（使用 dirname/join 确保 Windows 兼容）
-    const routeDir = dirname(route.fullPath);
-    const middlewarePath = join(routeDir, "_middleware.ts");
-
-    try {
-      const module = await this.loadModule(middlewarePath);
-      if (module.default && typeof module.default === "function") {
-        middlewares.push(module.default);
+    for (const middlewarePath of middlewarePaths) {
+      try {
+        const module = await this.loadModule(middlewarePath);
+        if (module.default && typeof module.default === "function") {
+          middlewares.push(module.default);
+        }
+        if (module.middleware && typeof module.middleware === "function") {
+          middlewares.push(module.middleware);
+        }
+      } catch {
+        // 中间件文件不存在或加载失败，跳过该层
       }
-      if (module.middleware && typeof module.middleware === "function") {
-        middlewares.push(module.middleware);
-      }
-    } catch {
-      // 中间件文件不存在，忽略
     }
 
     return middlewares;
@@ -924,16 +967,34 @@ export class Router {
 
     // 处理 index 文件
     if (nameWithoutExt === "index") {
-      const path = relativePath
+      let routePath = relativePath
         ? `/${relativePath.replace(/\/index$/, "")}`
         : "/";
+      routePath = routePath || "/";
+      /**
+       * 目录名中的动态段（例：`projects/[id]/index.tsx`）必须与 `.tsx` 文件名分支一致，
+       * 转为 `:param` / `*` / 可选段；否则会得到字面量 `/projects/[id]`，真实 URL 永远无法匹配。
+       */
+      routePath = routePath.replace(/\[\[([^\]]+)\]\]/g, ":$1?");
+      routePath = routePath.replace(/\[\.\.\.([^\]]+)\]/g, "*");
+      routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
+
+      let routeType: RouteType = "static";
+      if (routePath.includes("*")) {
+        routeType = "wildcard";
+      } else if (/\/:[^/]+\?/.test(routePath)) {
+        routeType = "optional";
+      } else if (routePath.includes(":")) {
+        routeType = "dynamic";
+      }
+
       const file = this.normalizeRouteFile(
         relativePath ? `${relativePath}/${fileName}` : fileName,
       );
       return {
-        path: path || "/",
+        path: routePath,
         file,
-        type: "static",
+        type: routeType,
       };
     }
 
@@ -971,6 +1032,20 @@ export class Router {
     routePath = routePath.replace(/\[\[([^\]]+)\]\]/g, ":$1?");
     routePath = routePath.replace(/\[\.\.\.([^\]]+)\]/g, "*");
     routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
+
+    /**
+     * 动态段可出现在目录名中（如 `projects/[id]/bible.tsx`）：文件名本身是静态的，
+     * 若不根据最终 path 提升类型，会残留 `type: "static"` 导致只能做字面量相等匹配。
+     */
+    if (routeType === "static") {
+      if (routePath.includes("*")) {
+        routeType = "wildcard";
+      } else if (/\/:[^/]+\?/.test(routePath)) {
+        routeType = "optional";
+      } else if (routePath.includes(":")) {
+        routeType = "dynamic";
+      }
+    }
 
     return {
       path: routePath,

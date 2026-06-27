@@ -7,18 +7,17 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-193%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-199%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
 
 **Changelog**: [English](./docs/en-US/CHANGELOG.md) |
 [中文 (Chinese)](./docs/zh-CN/CHANGELOG.md)
 
-### [1.1.7] - 2026-04-21
+### [1.1.8] - 2026-06-27
 
-- **Added**: **`normalizePathname`** / **`isNavActive`**
-  (**`@dreamer/router/client`**) for nav highlighting.
-- **Changed**: **`Router.scan`** registers **`/api/foo/:method`** for flat API
-  files (**`routes/api/foo.ts`**); **`loadComponent`** uses **`async`/`await`**.
-  See [CHANGELOG](./docs/en-US/CHANGELOG.md).
+- **Added**: **`getMiddlewarePathsForPath`** / **`getMiddlewareKeysForPath`**
+  for nested **`_middleware.ts`** (same rules as nested **`_layout`**).
+- **Changed**: **`handleRequest`** runs the full middleware chain (root → each
+  path segment prefix). See [CHANGELOG](./docs/en-US/CHANGELOG.md).
 
 ---
 
@@ -665,11 +664,11 @@ navigation):
 
 ## 📋 Changelog
 
-**v1.1.7** (2026-04-21): **Added** — **`nav-match`** helpers on
-**`@dreamer/router/client`**. **Changed** — **`Router.scan`** registers
-**`/api/foo/:method`** for static API files; **`loadComponent`** uses
-**`async`/`await`**. **Tests** — **`nav-match.test.ts`**, extended **`mod`** /
-**`client`** coverage. Full history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.1.8** (2026-06-27): **Added** — **`getMiddlewarePathsForPath`** /
+**`getMiddlewareKeysForPath`** for nested **`_middleware.ts`**. **Changed** —
+**`handleRequest`** runs root → subdirectory middleware chain (same as nested
+**`_layout`**). **Tests** — nested middleware in **`mod.test.ts`**. Full
+history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 ---
 

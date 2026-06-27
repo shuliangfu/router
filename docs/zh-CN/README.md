@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-193%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-199%20passed-brightgreen)](./TEST_REPORT.md)
 
 ---
 
@@ -650,11 +650,11 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.1.7**（2026-04-21）：**新增**
-**`nav-match`**（**`@dreamer/router/client`**）； **变更**：**`Router.scan`**
-为扁平 API 文件注册 **`/api/foo/:method`**；**`loadComponent`** 改为
-**`async`/`await`**。**测试**：新增 **`nav-match.test.ts`**，扩展 **`mod`** /
-**`client`**。 详见 [CHANGELOG.md](./CHANGELOG.md)。
+**v1.1.8**（2026-06-27）：**新增** **`getMiddlewarePathsForPath`** /
+**`getMiddlewareKeysForPath`**（嵌套 **`_middleware.ts`**，规则同
+**`_layout`**）； **变更**：**`handleRequest`** 按 pathname 链式执行根 →
+子目录中间件。**测试**：**`mod.test.ts`** 嵌套中间件用例。 详见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 

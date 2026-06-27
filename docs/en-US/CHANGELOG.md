@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.8] - 2026-06-27
+
+### Added
+
+- **`Router.getMiddlewarePathsForPath(pathname)`** and
+  **`Router.getMiddlewareKeysForPath(pathname)`**: Collect nested
+  **`_middleware.ts`** files from root to the current path (outer → inner),
+  mirroring **`getLayoutPathsForPath`** / **`getLayoutKeysForPath`** for
+  **`_layout.tsx`**.
+
+### Changed
+
+- **`Router.handleRequest`**: Loads and runs the full nested middleware chain
+  for the request pathname (root **`routes/_middleware.ts`** plus each segment
+  prefix such as **`hs-admin/_middleware.ts`**), not only the matched page
+  directory.
+
+### Tests
+
+- **`tests/mod.test.ts`**: Nested middleware path/key collection and
+  **`handleRequest`** execution order (root → subdirectory).
+
+---
+
 ## [1.1.7] - 2026-04-21
 
 ### Added

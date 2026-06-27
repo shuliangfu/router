@@ -7,7 +7,7 @@
 | Test library version | @dreamer/test@^1.1.7                   |
 | Runtime adapter      | @dreamer/runtime-adapter@^1.0.18       |
 | Test framework       | @dreamer/test (describe/it/expect)     |
-| Test date            | 2026-04-21                             |
+| Test date            | 2026-06-27                             |
 | Test environment     | Deno + Bun + Puppeteer (browser tests) |
 
 ## Test Results
@@ -16,11 +16,11 @@
 
 | Metric         | Value           |
 | -------------- | --------------- |
-| Total tests    | 193             |
-| Passed         | 193             |
+| Total tests    | 199             |
+| Passed         | 199             |
 | Failed         | 0               |
 | Pass rate      | 100%            |
-| Execution time | ~31s full suite |
+| Execution time | ~33s full suite |
 
 **Bun** (`bun test tests/`): **189** passed, **0** failed (~32s). The reported
 total can differ from Deno because the Bun runner counts nested **`describe`**
@@ -30,7 +30,7 @@ cases differently; the same files run and all cases pass.
 
 | Runtime | Tests (reported) | Passed | Status |
 | ------- | ---------------- | ------ | ------ |
-| Deno    | 193              | 193    | ✅     |
+| Deno    | 199              | 199    | ✅     |
 | Bun     | 189              | 189    | ✅     |
 
 ### Test File Statistics
@@ -39,7 +39,7 @@ cases differently; the same files run and all cases pass.
 | ------------------------ | ----- | ------ | ------ | ------ |
 | client-browser.test.ts   | 28    | 28     | 0      | ✅     |
 | client.test.ts           | 101   | 101    | 0      | ✅     |
-| mod.test.ts              | 45    | 45     | 0      | ✅     |
+| mod.test.ts              | 49    | 49     | 0      | ✅     |
 | nav-match.test.ts        | 5     | 5      | 0      | ✅     |
 | specificity-sort.test.ts | 14    | 14     | 0      | ✅     |
 
@@ -77,7 +77,7 @@ cases differently; the same files run and all cases pass.
 - ✅ Hooks with no global router (SSR-safe): `useRoute`, `useQuery`,
   `useParams`, `useNavigationState`, `useIsActive`, `useRouter`
 
-### 3. Server Router Tests (`mod.test.ts`) — 45 tests
+### 3. Server Router Tests (`mod.test.ts`) — 49 tests
 
 - ✅ Constructor, `scan`, `match`, `getRoutes`, `getSpecialFile`
 - ✅ Optional/wildcard/API routes, non-route `.ts`/`.js` ignored under non-`api`
@@ -85,6 +85,8 @@ cases differently; the same files run and all cases pass.
 - ✅ Flat API files: `/api/foo/:method` alongside static `/api/foo` for action
   style URLs
 - ✅ `getLayoutPathsForPath` / `getLayoutKeysForPath` (nested `_layout`)
+- ✅ `getMiddlewarePathsForPath` / `getMiddlewareKeysForPath` (nested
+  `_middleware`) and `handleRequest` chain order
 - ✅ Redirects, middleware, `getClientRoutes`, `skipAppValidation`,
   `getApiMode`, module cache
 - ✅ `RouteMatch.load` / `fullPath` / `meta`
@@ -105,12 +107,13 @@ cases differently; the same files run and all cases pass.
 
 ## Conclusion
 
-All tests pass on Deno (193) and Bun (189). The package covers server file
-routing (including **scan-order specificity** and **flat API `:method`**
-routes), client navigation/guards/link interception, **nav highlighting**
-helpers, layout key helpers, bundle path heuristics, and shared **core**
-matching/sort logic used by both runtimes.
+All tests pass on Deno (199) and Bun (189). The package covers server file
+routing (including **scan-order specificity**, **flat API `:method`** routes,
+and **nested `_middleware` chains**), client navigation/guards/link
+interception, **nav highlighting** helpers, layout/middleware key helpers,
+bundle path heuristics, and shared **core** matching/sort logic used by both
+runtimes.
 
 ---
 
-**Report generated**: 2026-04-21 **Test environment**: Deno + Bun + Puppeteer
+**Report generated**: 2026-06-27 **Test environment**: Deno + Bun + Puppeteer
