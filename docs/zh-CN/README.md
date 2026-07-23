@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-199%20passed-brightgreen)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-167%20passed%20(3%20runtimes)-green)](./TEST_REPORT.md)
 
 ---
 
@@ -34,6 +34,12 @@ deno add jsr:@dreamer/router
 bunx jsr add @dreamer/router
 ```
 
+### 服务端（Node.js 22+）
+
+```bash
+npx jsr add @dreamer/router
+```
+
 ### 客户端
 
 ```typescript
@@ -45,12 +51,19 @@ import { createRouter } from "jsr:@dreamer/router/client";
 
 ## 🌍 环境兼容性
 
-| 环境   | 支持 | 说明                           |
-| ------ | ---- | ------------------------------ |
-| Deno   | ✅   | 2.6+                           |
-| Bun    | ✅   | 1.3.5+                         |
-| 服务端 | ✅   | SSR 路由匹配、API 路由、中间件 |
-| 浏览器 | ✅   | 客户端路由导航（/client）      |
+| 环境     | 支持 | 说明                                                          |
+| -------- | ---- | ------------------------------------------------------------- |
+| Deno     | ✅   | 2.6+                                                          |
+| Bun      | ✅   | 1.3.5+                                                        |
+| Node.js  | ✅   | 22+（自 v1.2.0 起）；服务端 `scan`/`match` + 无头客户端路由   |
+| 服务端   | ✅   | SSR 路由匹配、API 路由、中间件                                |
+| 浏览器   | ✅   | 客户端路由导航（/client）                                     |
+
+> **Node.js**：服务端路由通过 `@dreamer/runtime-adapter` 的跨运行时 API 扫描
+> 文件系统并匹配路由（无 `Deno.*` 调用）。客户端路由器把所有浏览器全局对象
+> （`history`/`location`/`document`）都收敛到 `browserGlobal` 守卫之后，因此可在
+> 无头环境下导入并运行——在真实浏览器全局对象出现（或被 mock）之前，导航方法会抛
+> `"浏览器环境不支持 history API"`。
 
 ---
 
@@ -564,31 +577,36 @@ type RouterMode = "history" | "hash";
 
 ## 📊 测试报告
 
-| 指标     | 数值                                   |
-| -------- | -------------------------------------- |
-| 总测试数 | 193（Deno）；Bun 报告 189（同源文件）  |
-| 通过     | 193 / 189                              |
-| 失败     | 0                                      |
-| 通过率   | 100%                                   |
-| 测试日期 | 2026-04-21                             |
-| 执行时间 | 全套约 31s（Deno / Bun，含浏览器测试） |
+| 指标     | 数值                                                |
+| -------- | --------------------------------------------------- |
+| 总测试数 | 167 单元（CI）；Deno 报告 171（+4 生命周期钩子）   |
+| 通过     | Deno 171 / Bun 167 / Node 167                       |
+| 失败     | 0                                                   |
+| 通过率   | 100%                                                |
+| 测试日期 | 2026-07-23                                          |
+| 执行时间 | 单元套件约 0.4s（Deno/Bun/Node；浏览器测试本地跑）  |
 
 ### 运行时兼容性
 
-| 运行时 | 测试数（报告值） | 通过 | 状态 |
-| ------ | ---------------- | ---- | ---- |
-| Deno   | 193              | 193  | ✅   |
-| Bun    | 189              | 189  | ✅   |
+| 运行时  | 测试数（报告值） | 通过 | 状态 |
+| ------- | ---------------- | ---- | ---- |
+| Deno    | 171              | 171  | ✅   |
+| Bun     | 167              | 167  | ✅   |
+| Node.js | 167              | 167  | ✅   |
 
 ### 测试文件覆盖
 
 | 测试文件                 | 测试数量 | 覆盖内容                                                                          |
 | ------------------------ | -------- | --------------------------------------------------------------------------------- |
-| client-browser.test.ts   | 28       | 浏览器：导航、守卫、链接拦截、历史操作                                            |
-| client.test.ts           | 101      | 客户端：匹配、预取、元数据、basePath、hash、链接形式、特异性排序、SSR 安全 Hooks  |
-| mod.test.ts              | 45       | 服务端：扫描、匹配、布局链、重定向、中间件、bundle 路径启发式、扁平 API `:method` |
-| nav-match.test.ts        | 5        | `normalizePathname`、`isNavActive`                                                |
-| specificity-sort.test.ts | 14       | 核心特异性元组与 `Router.scan` 集成                                               |
+| client.test.ts           | 100      | 客户端：匹配、预取、元数据、basePath、hash、链接形式、特异性排序、SSR 安全 Hooks  |
+| mod.test.ts              | 50       | 服务端：扫描、匹配、布局链、重定向、中间件、bundle 路径启发式、扁平 API `:method` |
+| specificity-sort.test.ts | 13       | 核心特异性元组与 `Router.scan` 集成                                               |
+| nav-match.test.ts        | 4        | `normalizePathname`、`isNavActive`                                                |
+| client-browser.test.ts   | 28       | 浏览器（仅本地 `test:browser`，不进 CI）：导航、守卫、链接拦截、历史操作          |
+
+> CI 在 Linux/macOS/Windows 三平台跨 Deno / Bun / Node.js 跑上述 4 个单元测试文件
+> （167 用例，共 9 个 job）。Playwright 浏览器测试（`client-browser.test.ts`）需要
+> Chromium，仅本地通过 `deno task test:browser` 运行。
 
 详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
@@ -649,6 +667,13 @@ router.start(); // 开始拦截 <a> 标签点击
 ---
 
 ## 📋 变更日志
+
+**v1.2.0**（2026-07-23）：**新增** **Node.js 22+** 作为第三个支持的运行时；
+**变更**：`runtime-adapter` → `^1.2.2`、`i18n` → `^1.1.2`、`test` → `^1.2.3`，
+从 `package.json` 运行时依赖中移除 `esbuild`（esbuild 隔离——仅本地浏览器测试用，
+经 `deno.json` 解析）；**CI**：9-job 矩阵（Deno 2.9 / Bun 1.3 / Node 22 × Linux/macOS/
+Windows）仅跑单元测试，浏览器测试拆为本地 `test:browser`。详见
+[CHANGELOG.md](./CHANGELOG.md)。
 
 **v1.1.8**（2026-06-27）：**新增** **`getMiddlewarePathsForPath`** /
 **`getMiddlewareKeysForPath`**（嵌套 **`_middleware.ts`**，规则同

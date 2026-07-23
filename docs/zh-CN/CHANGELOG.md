@@ -7,6 +7,46 @@
 
 ---
 
+## [1.2.0] - 2026-07-23
+
+### 新增
+
+- **Node.js 22+** 作为第三个支持的运行时（与 Deno、Bun 并列）。服务端路由通过
+  `@dreamer/runtime-adapter` 的跨运行时 `readdir` / `stat` / `cwd` / `join` 扫描
+  文件系统并匹配路由（无 `Deno.*` 调用）。客户端路由器把所有浏览器全局对象
+  （`history` / `location` / `document` / `addEventListener`）都收敛到
+  `browserGlobal` 守卫之后，因此可在无头环境下导入并运行——在真实浏览器全局对象
+  出现（或被 mock）之前，导航方法会抛 `"浏览器环境不支持 history API"`。
+- 新增 **`tsconfig.json`** 与 **`test:node`** 任务
+  （`tsx --tsconfig tsconfig.json --test --test-force-exit ...`）支持 Node.js。
+- 新增 **`.npmrc`**（`@jsr:registry=https://npm.jsr.io`），让 `npm` / `bun` 能解析
+  `npm:@jsr/dreamer__*` 别名。
+
+### 变更
+
+- 升级 `@dreamer/runtime-adapter` → `^1.2.2`、`@dreamer/i18n` → `^1.1.2`、
+  `@dreamer/test` → `^1.2.3`。
+- **esbuild 隔离**：从 `package.json` 运行时依赖中移除 `@dreamer/esbuild`。
+  `src/` 对 esbuild 零依赖；仅本地 Playwright 浏览器测试
+  （`tests/client-browser.test.ts`）懒加载它，经 `deno.json` 的 `jsr:` import map
+  解析。这样避免 Node/Bun 触发 esbuild 二进制 postinstall 摩擦。
+- `deno.json` 新增 `minimumDependencyAge: 0` 与 `compilerOptions.lib`。
+- `publish.yml` 改为仅 tags 触发（不再 push `main` 分支）。
+
+### CI
+
+- 新增 9-job 矩阵：Deno 2.9 / Bun 1.3 / Node 22 × Linux / macOS / Windows，仅跑 4 个
+  单元测试文件（`mod`、`client`、`nav-match`、`specificity-sort`）。Playwright 浏览器
+  测试（`client-browser.test.ts`）拆为本地 `test:browser` 任务，避免 CI 受 Chromium
+  下载/启动不稳定影响。
+
+### 测试
+
+- 三运行时单元套件全绿：Deno 171（167 单元 + 4 个 `@dreamer/test` cleanup 生命周期
+  钩子）/ Bun 167 / Node 167。
+
+---
+
 ## [1.1.8] - 2026-06-27
 
 ### 新增

@@ -7,10 +7,24 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-199%20passed-brightgreen)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-167%20passed%20(3%20runtimes)-green)](./docs/en-US/TEST_REPORT.md)
 
 **Changelog**: [English](./docs/en-US/CHANGELOG.md) |
 [中文 (Chinese)](./docs/zh-CN/CHANGELOG.md)
+
+### [1.2.0] - 2026-07-23
+
+- **Added**: **Node.js 22+** compatibility (third supported runtime, alongside
+  Deno and Bun). Server `scan()`/`match()` use cross-runtime `readdir`/`stat`
+  from `@dreamer/runtime-adapter`; client router guards all browser globals via
+  the `browserGlobal` pattern so it loads headless.
+- **Changed**: Upgraded `@dreamer/runtime-adapter` → `^1.2.2`,
+  `@dreamer/i18n` → `^1.1.2`, `@dreamer/test` → `^1.2.3`. Removed `esbuild`
+  from `package.json` runtime deps (esbuild isolation — only the local browser
+  test uses it, resolved via `deno.json`).
+- **CI**: 9-job matrix (Deno 2.9 / Bun 1.3 / Node 22 × Linux/macOS/Windows)
+  running unit tests only; the Playwright browser test is split into the local
+  `test:browser` task. See [CHANGELOG](./docs/en-US/CHANGELOG.md).
 
 ### [1.1.8] - 2026-06-27
 
@@ -46,6 +60,12 @@ deno add jsr:@dreamer/router
 bunx jsr add @dreamer/router
 ```
 
+### Server (Node.js 22+)
+
+```bash
+npx jsr add @dreamer/router
+```
+
 ### Client
 
 ```typescript
@@ -61,8 +81,16 @@ import { createRouter } from "jsr:@dreamer/router/client";
 | ----------- | ------- | ------------------------------------------ |
 | Deno        | ✅      | 2.6+                                       |
 | Bun         | ✅      | 1.3.5+                                     |
+| Node.js     | ✅      | 22+ (since v1.2.0); server `scan`/`match` + headless client router |
 | Server      | ✅      | SSR route matching, API routes, middleware |
 | Browser     | ✅      | Client routing (/client)                   |
+
+> **Node.js**: The server router scans the filesystem and matches routes via
+> cross-runtime APIs from `@dreamer/runtime-adapter` (no `Deno.*` usage). The
+> client router guards every browser global (`history`/`location`/`document`)
+> behind the `browserGlobal` pattern, so it imports and runs headless —
+> navigation methods throw `"浏览器环境不支持 history API"` until real browser
+> globals are present (or mocked).
 
 ---
 
@@ -579,29 +607,35 @@ type RouterMode = "history" | "hash";
 
 | Metric      | Value                                                |
 | ----------- | ---------------------------------------------------- |
-| Total tests | 193 (Deno); Bun reports 189 (same files)             |
-| Passed      | 193 / 189                                            |
+| Total tests | 167 unit (CI); Deno reports 171 (+4 lifecycle hooks) |
+| Passed      | Deno 171 / Bun 167 / Node 167                        |
 | Failed      | 0                                                    |
 | Pass rate   | 100%                                                 |
-| Test date   | 2026-04-21                                           |
-| Duration    | ~31s full suite (Deno / Bun; includes browser tests) |
+| Test date   | 2026-07-23                                           |
+| Duration    | ~0.4s unit suite (Deno/Bun/Node; browser test local) |
 
 ### Runtime Compatibility
 
 | Runtime | Tests (reported) | Passed | Status |
 | ------- | ---------------- | ------ | ------ |
-| Deno    | 193              | 193    | ✅     |
-| Bun     | 189              | 189    | ✅     |
+| Deno    | 171              | 171    | ✅     |
+| Bun     | 167              | 167    | ✅     |
+| Node.js | 167              | 167    | ✅     |
 
 ### Test File Coverage
 
 | Test file                | Count | Coverage                                                                                             |
 | ------------------------ | ----- | ---------------------------------------------------------------------------------------------------- |
-| client-browser.test.ts   | 28    | Browser: navigation, guards, link interception, history                                              |
-| client.test.ts           | 101   | Client: match, prefetch, metadata, basePath, hash mode, link types, specificity sort, SSR-safe hooks |
-| mod.test.ts              | 45    | Server: scan, match, layouts, redirect, middleware, bundle-path heuristic, flat API `:method`        |
-| nav-match.test.ts        | 5     | `normalizePathname`, `isNavActive`                                                                   |
-| specificity-sort.test.ts | 14    | Core specificity tuples + `Router.scan` integration                                                  |
+| client.test.ts           | 100   | Client: match, prefetch, metadata, basePath, hash mode, link types, specificity sort, SSR-safe hooks |
+| mod.test.ts              | 50    | Server: scan, match, layouts, redirect, middleware, bundle-path heuristic, flat API `:method`        |
+| specificity-sort.test.ts | 13    | Core specificity tuples + `Router.scan` integration                                                  |
+| nav-match.test.ts        | 4     | `normalizePathname`, `isNavActive`                                                                   |
+| client-browser.test.ts   | 28    | Browser (local `test:browser` only, excluded from CI): navigation, guards, link interception, history |
+
+> CI runs the four unit files above (167 tests) across Deno / Bun / Node.js on
+> Linux, macOS and Windows (9 jobs). The Playwright browser test
+> (`client-browser.test.ts`) requires Chromium and is run locally via
+> `deno task test:browser`.
 
 See [TEST_REPORT.md](./docs/en-US/TEST_REPORT.md) for details.
 
@@ -663,6 +697,13 @@ navigation):
 ---
 
 ## 📋 Changelog
+
+**v1.2.0** (2026-07-23): **Added** — **Node.js 22+** as a third supported
+runtime. **Changed** — upgraded `runtime-adapter` → `^1.2.2`, `i18n` → `^1.1.2`,
+`test` → `^1.2.3`; removed `esbuild` from `package.json` runtime deps (esbuild
+isolation). **CI** — 9-job matrix (Deno 2.9 / Bun 1.3 / Node 22 × Linux/macOS/
+Windows) running unit tests; browser test split to local `test:browser`. Full
+history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
 
 **v1.1.8** (2026-06-27): **Added** — **`getMiddlewarePathsForPath`** /
 **`getMiddlewareKeysForPath`** for nested **`_middleware.ts`**. **Changed** —

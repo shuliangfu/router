@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/router",
-  "version": "1.1.8",
+  "version": "1.2.0",
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
@@ -37,11 +37,32 @@
       ]
     }
   },
+  "tasks": {
+    "test": "deno test --allow-all tests/mod.test.ts tests/client.test.ts tests/nav-match.test.ts tests/specificity-sort.test.ts",
+    "test:browser": "deno test --allow-all tests/client-browser.test.ts",
+    "test:node": "tsx --tsconfig tsconfig.json --test --test-force-exit tests/mod.test.ts tests/client.test.ts tests/nav-match.test.ts tests/specificity-sort.test.ts",
+    "check": "deno check src/mod.ts src/client/mod.ts",
+    "publish": "deno publish"
+  },
   "imports": {
-    "@dreamer/i18n": "jsr:@dreamer/i18n@^1.0.1",
-    "@dreamer/test": "jsr:@dreamer/test@^1.1.8",
-    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.0.19",
+    "@dreamer/i18n": "jsr:@dreamer/i18n@^1.1.2",
+    "@dreamer/test": "jsr:@dreamer/test@^1.2.3",
+    "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.2.2",
     "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.1.9"
   },
-  "nodeModulesDir": "auto"
+  "nodeModulesDir": "auto",
+  "minimumDependencyAge": 0,
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "lib": [
+      "esnext",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns",
+      "deno.window"
+    ]
+  }
 }

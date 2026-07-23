@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] - 2026-07-23
+
+### Added
+
+- **Node.js 22+** as a third supported runtime (alongside Deno and Bun). The
+  server router scans the filesystem and matches routes through cross-runtime
+  `readdir` / `stat` / `cwd` / `join` from `@dreamer/runtime-adapter` (no
+  `Deno.*` calls). The client router guards every browser global
+  (`history` / `location` / `document` / `addEventListener`) behind the
+  `browserGlobal` pattern, so it imports and runs headless; navigation methods
+  throw `"浏览器环境不支持 history API"` until real browser globals are present
+  (or mocked).
+- **`tsconfig.json`** and **`test:node`** task
+  (`tsx --tsconfig tsconfig.json --test --test-force-exit ...`) for Node.js.
+- **`.npmrc`** (`@jsr:registry=https://npm.jsr.io`) so `npm` / `bun` can resolve
+  the `npm:@jsr/dreamer__*` aliases.
+
+### Changed
+
+- Upgraded `@dreamer/runtime-adapter` → `^1.2.2`, `@dreamer/i18n` → `^1.1.2`,
+  `@dreamer/test` → `^1.2.3`.
+- **esbuild isolation**: removed `@dreamer/esbuild` from `package.json` runtime
+  dependencies. `src/` is zero-dependency on esbuild; only the local Playwright
+  browser test (`tests/client-browser.test.ts`) lazy-imports it, resolved via
+  the `deno.json` `jsr:` import map. This avoids the esbuild binary postinstall
+  friction for Node/Bun.
+- Added `minimumDependencyAge: 0` and `compilerOptions.lib` to `deno.json`.
+- `publish.yml` now triggers on tags only (no `main` branch push).
+
+### CI
+
+- New 9-job matrix: Deno 2.9 / Bun 1.3 / Node 22 × Linux / macOS / Windows,
+  running the four unit test files only (`mod`, `client`, `nav-match`,
+  `specificity-sort`). The Playwright browser test
+  (`client-browser.test.ts`) is split into the local `test:browser` task to keep
+  CI free of Chromium download/startup flakiness.
+
+### Tests
+
+- Three-runtime unit suite green: Deno 171 (167 unit + 4 `@dreamer/test`
+  cleanup lifecycle hooks) / Bun 167 / Node 167.
+
+---
+
 ## [1.1.8] - 2026-06-27
 
 ### Added
