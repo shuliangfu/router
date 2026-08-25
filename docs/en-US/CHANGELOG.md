@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.1] - 2026-08-25
+
+### Added
+
+- **`RouterOptions.apiOnly`**: treat all non-special files under `routesDir` as
+  API handlers (`.ts` / `.js` / `.tsx` / `.jsx`) without requiring an `api/`
+  path segment. Defaults `skipAppValidation` to `true` when `apiOnly` is set.
+  Enables pure API apps (e.g. dweb `kind: "api"`) to place handlers directly
+  under `routes/` (e.g. `routes/hello.ts` → `/hello`).
+
+### Tests
+
+- Unit coverage for `apiOnly` scan + match (`tests/mod.test.ts`).
+
+---
+
 ## [1.2.0] - 2026-07-23
 
 ### Added
@@ -14,11 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Node.js 22+** as a third supported runtime (alongside Deno and Bun). The
   server router scans the filesystem and matches routes through cross-runtime
   `readdir` / `stat` / `cwd` / `join` from `@dreamer/runtime-adapter` (no
-  `Deno.*` calls). The client router guards every browser global
-  (`history` / `location` / `document` / `addEventListener`) behind the
-  `browserGlobal` pattern, so it imports and runs headless; navigation methods
-  throw `"浏览器环境不支持 history API"` until real browser globals are present
-  (or mocked).
+  `Deno.*` calls). The client router guards every browser global (`history` /
+  `location` / `document` / `addEventListener`) behind the `browserGlobal`
+  pattern, so it imports and runs headless; navigation methods throw
+  `"浏览器环境不支持 history API"` until real browser globals are present (or
+  mocked).
 - **`tsconfig.json`** and **`test:node`** task
   (`tsx --tsconfig tsconfig.json --test --test-force-exit ...`) for Node.js.
 - **`.npmrc`** (`@jsr:registry=https://npm.jsr.io`) so `npm` / `bun` can resolve
@@ -40,14 +56,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - New 9-job matrix: Deno 2.9 / Bun 1.3 / Node 22 × Linux / macOS / Windows,
   running the four unit test files only (`mod`, `client`, `nav-match`,
-  `specificity-sort`). The Playwright browser test
-  (`client-browser.test.ts`) is split into the local `test:browser` task to keep
-  CI free of Chromium download/startup flakiness.
+  `specificity-sort`). The Playwright browser test (`client-browser.test.ts`) is
+  split into the local `test:browser` task to keep CI free of Chromium
+  download/startup flakiness.
 
 ### Tests
 
-- Three-runtime unit suite green: Deno 171 (167 unit + 4 `@dreamer/test`
-  cleanup lifecycle hooks) / Bun 167 / Node 167.
+- Three-runtime unit suite green: Deno 171 (167 unit + 4 `@dreamer/test` cleanup
+  lifecycle hooks) / Bun 167 / Node 167.
 
 ---
 

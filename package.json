@@ -1,6 +1,6 @@
 {
   "name": "@dreamer/router",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "File-system routing and client router for Deno, Bun and Node.js.",
   "type": "module",
   "license": "Apache-2.0",

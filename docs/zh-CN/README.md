@@ -7,7 +7,7 @@
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
-[![Tests](https://img.shields.io/badge/tests-167%20passed%20(3%20runtimes)-green)](./TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-168%20passed%20%283%20runtimes%29-green)](./TEST_REPORT.md)
 
 ---
 
@@ -51,13 +51,13 @@ import { createRouter } from "jsr:@dreamer/router/client";
 
 ## 🌍 环境兼容性
 
-| 环境     | 支持 | 说明                                                          |
-| -------- | ---- | ------------------------------------------------------------- |
-| Deno     | ✅   | 2.6+                                                          |
-| Bun      | ✅   | 1.3.5+                                                        |
-| Node.js  | ✅   | 22+（自 v1.2.0 起）；服务端 `scan`/`match` + 无头客户端路由   |
-| 服务端   | ✅   | SSR 路由匹配、API 路由、中间件                                |
-| 浏览器   | ✅   | 客户端路由导航（/client）                                     |
+| 环境    | 支持 | 说明                                                        |
+| ------- | ---- | ----------------------------------------------------------- |
+| Deno    | ✅   | 2.6+                                                        |
+| Bun     | ✅   | 1.3.5+                                                      |
+| Node.js | ✅   | 22+（自 v1.2.0 起）；服务端 `scan`/`match` + 无头客户端路由 |
+| 服务端  | ✅   | SSR 路由匹配、API 路由、中间件                              |
+| 浏览器  | ✅   | 客户端路由导航（/client）                                   |
 
 > **Node.js**：服务端路由通过 `@dreamer/runtime-adapter` 的跨运行时 API 扫描
 > 文件系统并匹配路由（无 `Deno.*` 调用）。客户端路由器把所有浏览器全局对象
@@ -577,14 +577,14 @@ type RouterMode = "history" | "hash";
 
 ## 📊 测试报告
 
-| 指标     | 数值                                                |
-| -------- | --------------------------------------------------- |
+| 指标     | 数值                                               |
+| -------- | -------------------------------------------------- |
 | 总测试数 | 167 单元（CI）；Deno 报告 171（+4 生命周期钩子）   |
-| 通过     | Deno 171 / Bun 167 / Node 167                       |
-| 失败     | 0                                                   |
-| 通过率   | 100%                                                |
-| 测试日期 | 2026-07-23                                          |
-| 执行时间 | 单元套件约 0.4s（Deno/Bun/Node；浏览器测试本地跑）  |
+| 通过     | Deno 171 / Bun 167 / Node 167                      |
+| 失败     | 0                                                  |
+| 通过率   | 100%                                               |
+| 测试日期 | 2026-07-23                                         |
+| 执行时间 | 单元套件约 0.4s（Deno/Bun/Node；浏览器测试本地跑） |
 
 ### 运行时兼容性
 
@@ -604,9 +604,10 @@ type RouterMode = "history" | "hash";
 | nav-match.test.ts        | 4        | `normalizePathname`、`isNavActive`                                                |
 | client-browser.test.ts   | 28       | 浏览器（仅本地 `test:browser`，不进 CI）：导航、守卫、链接拦截、历史操作          |
 
-> CI 在 Linux/macOS/Windows 三平台跨 Deno / Bun / Node.js 跑上述 4 个单元测试文件
-> （167 用例，共 9 个 job）。Playwright 浏览器测试（`client-browser.test.ts`）需要
-> Chromium，仅本地通过 `deno task test:browser` 运行。
+> CI 在 Linux/macOS/Windows 三平台跨 Deno / Bun / Node.js 跑上述 4
+> 个单元测试文件 （167 用例，共 9 个 job）。Playwright
+> 浏览器测试（`client-browser.test.ts`）需要 Chromium，仅本地通过
+> `deno task test:browser` 运行。
 
 详细测试报告请查看 [TEST_REPORT.md](./TEST_REPORT.md)。
 
@@ -668,18 +669,10 @@ router.start(); // 开始拦截 <a> 标签点击
 
 ## 📋 变更日志
 
-**v1.2.0**（2026-07-23）：**新增** **Node.js 22+** 作为第三个支持的运行时；
-**变更**：`runtime-adapter` → `^1.2.2`、`i18n` → `^1.1.2`、`test` → `^1.2.3`，
-从 `package.json` 运行时依赖中移除 `esbuild`（esbuild 隔离——仅本地浏览器测试用，
-经 `deno.json` 解析）；**CI**：9-job 矩阵（Deno 2.9 / Bun 1.3 / Node 22 × Linux/macOS/
-Windows）仅跑单元测试，浏览器测试拆为本地 `test:browser`。详见
-[CHANGELOG.md](./CHANGELOG.md)。
-
-**v1.1.8**（2026-06-27）：**新增** **`getMiddlewarePathsForPath`** /
-**`getMiddlewareKeysForPath`**（嵌套 **`_middleware.ts`**，规则同
-**`_layout`**）； **变更**：**`handleRequest`** 按 pathname 链式执行根 →
-子目录中间件。**测试**：**`mod.test.ts`** 嵌套中间件用例。 详见
-[CHANGELOG.md](./CHANGELOG.md)。
+**v1.2.1**（2026-08-25）：**新增** **`RouterOptions.apiOnly`**（纯 API 应用可将
+handler 直接放在 `routes/`，不必再套 `api/` 目录）。**测试**：Deno 172 / Bun 168
+/ Node 172。详见 [CHANGELOG.md](./CHANGELOG.md) ·
+[TEST_REPORT.md](./TEST_REPORT.md)。
 
 ---
 

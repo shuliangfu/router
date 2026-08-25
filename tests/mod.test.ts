@@ -846,6 +846,25 @@ describe("Router - 新功能测试", () => {
     });
   });
 
+  describe("apiOnly", () => {
+    it("应将 routes/ 根下 .ts 视为 API，且默认跳过 _app", async () => {
+      await cleanupTestRoutes();
+      await mkdir(testRoutesDir, { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "hello.ts"),
+        "export async function GET() { return { ok: true }; }",
+      );
+
+      const router = createRouter({
+        routesDir: testRoutesDir,
+        apiOnly: true,
+      });
+      await router.scan();
+      const routes = router.getRoutes();
+      expect(routes.some((r) => r.path === "/hello" && r.isApi)).toBe(true);
+    });
+  });
+
   describe("getApiMode", () => {
     it("应该返回 API 模式", () => {
       const router = createRouter({ routesDir: testRoutesDir });

@@ -116,6 +116,12 @@ export interface RouterOptions {
   middlewares?: MiddlewareFunction[];
   /** 是否跳过 _app 验证（默认：false） */
   skipAppValidation?: boolean;
+  /**
+   * 纯 API 应用模式：将 routesDir 下所有非特殊路由文件视为 API handler
+   * （不必放在 `api/` 子目录；通常配合 skipAppValidation）。
+   * 默认 false。
+   */
+  apiOnly?: boolean;
   /** 是否启用详细调试日志（默认：false） */
   debug?: boolean;
   /** 服务端文案语言（如 "en-US"、"zh-CN"）；不传则从环境 LANGUAGE/LC_ALL/LANG 检测 */
@@ -234,13 +240,19 @@ export class Router {
     & Required<
       Omit<
         RouterOptions,
-        "redirects" | "middlewares" | "skipAppValidation" | "debug" | "lang"
+        | "redirects"
+        | "middlewares"
+        | "skipAppValidation"
+        | "apiOnly"
+        | "debug"
+        | "lang"
       >
     >
     & {
       redirects: RedirectConfig[];
       middlewares: MiddlewareFunction[];
       skipAppValidation: boolean;
+      apiOnly: boolean;
       debug: boolean;
       lang?: Locale;
     };
@@ -265,12 +277,15 @@ export class Router {
    * @param options 路由配置选项
    */
   constructor(options: RouterOptions) {
+    const apiOnly = options.apiOnly === true;
     this.options = {
       apiMode: options.apiMode || "restful",
       routesDir: options.routesDir,
       redirects: options.redirects || [],
       middlewares: options.middlewares || [],
-      skipAppValidation: options.skipAppValidation || false,
+      // apiOnly 应用无页面壳，默认跳过 _app 校验（仍可显式传 false 覆盖）
+      skipAppValidation: options.skipAppValidation ?? apiOnly,
+      apiOnly,
       debug: options.debug ?? false,
       lang: options.lang,
     };
@@ -853,14 +868,17 @@ export class Router {
     }
 
     // 判断是否为 API 路由（使用规范化后的路径，Windows 下 relativePath 可能含反斜杠）
-    const isApi = normalizedPath.startsWith("api/") ||
+    // apiOnly：整棵 routes/ 均为 API，不必再套 api/ 目录
+    const isApi = this.options.apiOnly ||
+      normalizedPath.startsWith("api/") ||
       normalizedPath.split("/").includes("api");
 
     const lower = fileName.toLowerCase();
     /** 页面路由仅 .tsx / .jsx，避免 routes 内工具 .ts 被当作页面 */
-    const isPageRoute = lower.endsWith(".tsx") || lower.endsWith(".jsx");
+    const isPageRoute = !this.options.apiOnly &&
+      (lower.endsWith(".tsx") || lower.endsWith(".jsx"));
     /**
-     * API 目录下仍支持 .ts / .js（及 tsx/jsx）作为 handler，与现有示例一致。
+     * API 目录下（或 apiOnly）仍支持 .ts / .js（及 tsx/jsx）作为 handler，与现有示例一致。
      */
     const isApiRouteFile = isApi &&
       (lower.endsWith(".ts") ||
@@ -914,7 +932,7 @@ export class Router {
      */
     if (
       isApiRouteFile &&
-      routeInfo.path.startsWith("/api/") &&
+      (routeInfo.path.startsWith("/api/") || this.options.apiOnly) &&
       !routeInfo.path.includes(":") &&
       routeInfo.type === "static"
     ) {

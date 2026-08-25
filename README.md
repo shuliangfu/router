@@ -7,31 +7,20 @@ English | [中文 (Chinese)](./docs/zh-CN/README.md)
 
 [![JSR](https://jsr.io/badges/@dreamer/router)](https://jsr.io/@dreamer/router)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Tests](https://img.shields.io/badge/tests-167%20passed%20(3%20runtimes)-green)](./docs/en-US/TEST_REPORT.md)
+[![Tests](https://img.shields.io/badge/tests-168%20passed%20%283%20runtimes%29-green)](./docs/en-US/TEST_REPORT.md)
 
 **Changelog**: [English](./docs/en-US/CHANGELOG.md) |
 [中文 (Chinese)](./docs/zh-CN/CHANGELOG.md)
 
-### [1.2.0] - 2026-07-23
+### [1.2.1] - 2026-08-25
 
-- **Added**: **Node.js 22+** compatibility (third supported runtime, alongside
-  Deno and Bun). Server `scan()`/`match()` use cross-runtime `readdir`/`stat`
-  from `@dreamer/runtime-adapter`; client router guards all browser globals via
-  the `browserGlobal` pattern so it loads headless.
-- **Changed**: Upgraded `@dreamer/runtime-adapter` → `^1.2.2`,
-  `@dreamer/i18n` → `^1.1.2`, `@dreamer/test` → `^1.2.3`. Removed `esbuild`
-  from `package.json` runtime deps (esbuild isolation — only the local browser
-  test uses it, resolved via `deno.json`).
-- **CI**: 9-job matrix (Deno 2.9 / Bun 1.3 / Node 22 × Linux/macOS/Windows)
-  running unit tests only; the Playwright browser test is split into the local
-  `test:browser` task. See [CHANGELOG](./docs/en-US/CHANGELOG.md).
-
-### [1.1.8] - 2026-06-27
-
-- **Added**: **`getMiddlewarePathsForPath`** / **`getMiddlewareKeysForPath`**
-  for nested **`_middleware.ts`** (same rules as nested **`_layout`**).
-- **Changed**: **`handleRequest`** runs the full middleware chain (root → each
-  path segment prefix). See [CHANGELOG](./docs/en-US/CHANGELOG.md).
+- **Added**: **`RouterOptions.apiOnly`** — treat all non-special files under
+  `routesDir` as API handlers without an `api/` path segment; defaults
+  `skipAppValidation` when enabled (for pure API apps such as dweb
+  `kind: "api"`).
+- **Tests**: Deno 172 / Bun 168 / Node 172 unit suite green. See
+  [CHANGELOG](./docs/en-US/CHANGELOG.md) and
+  [TEST_REPORT](./docs/en-US/TEST_REPORT.md).
 
 ---
 
@@ -77,13 +66,13 @@ import { createRouter } from "jsr:@dreamer/router/client";
 
 ## 🌍 Environment Compatibility
 
-| Environment | Support | Notes                                      |
-| ----------- | ------- | ------------------------------------------ |
-| Deno        | ✅      | 2.6+                                       |
-| Bun         | ✅      | 1.3.5+                                     |
+| Environment | Support | Notes                                                              |
+| ----------- | ------- | ------------------------------------------------------------------ |
+| Deno        | ✅      | 2.6+                                                               |
+| Bun         | ✅      | 1.3.5+                                                             |
 | Node.js     | ✅      | 22+ (since v1.2.0); server `scan`/`match` + headless client router |
-| Server      | ✅      | SSR route matching, API routes, middleware |
-| Browser     | ✅      | Client routing (/client)                   |
+| Server      | ✅      | SSR route matching, API routes, middleware                         |
+| Browser     | ✅      | Client routing (/client)                                           |
 
 > **Node.js**: The server router scans the filesystem and matches routes via
 > cross-runtime APIs from `@dreamer/runtime-adapter` (no `Deno.*` usage). The
@@ -624,12 +613,12 @@ type RouterMode = "history" | "hash";
 
 ### Test File Coverage
 
-| Test file                | Count | Coverage                                                                                             |
-| ------------------------ | ----- | ---------------------------------------------------------------------------------------------------- |
-| client.test.ts           | 100   | Client: match, prefetch, metadata, basePath, hash mode, link types, specificity sort, SSR-safe hooks |
-| mod.test.ts              | 50    | Server: scan, match, layouts, redirect, middleware, bundle-path heuristic, flat API `:method`        |
-| specificity-sort.test.ts | 13    | Core specificity tuples + `Router.scan` integration                                                  |
-| nav-match.test.ts        | 4     | `normalizePathname`, `isNavActive`                                                                   |
+| Test file                | Count | Coverage                                                                                              |
+| ------------------------ | ----- | ----------------------------------------------------------------------------------------------------- |
+| client.test.ts           | 100   | Client: match, prefetch, metadata, basePath, hash mode, link types, specificity sort, SSR-safe hooks  |
+| mod.test.ts              | 50    | Server: scan, match, layouts, redirect, middleware, bundle-path heuristic, flat API `:method`         |
+| specificity-sort.test.ts | 13    | Core specificity tuples + `Router.scan` integration                                                   |
+| nav-match.test.ts        | 4     | `normalizePathname`, `isNavActive`                                                                    |
 | client-browser.test.ts   | 28    | Browser (local `test:browser` only, excluded from CI): navigation, guards, link interception, history |
 
 > CI runs the four unit files above (167 tests) across Deno / Bun / Node.js on
@@ -698,18 +687,11 @@ navigation):
 
 ## 📋 Changelog
 
-**v1.2.0** (2026-07-23): **Added** — **Node.js 22+** as a third supported
-runtime. **Changed** — upgraded `runtime-adapter` → `^1.2.2`, `i18n` → `^1.1.2`,
-`test` → `^1.2.3`; removed `esbuild` from `package.json` runtime deps (esbuild
-isolation). **CI** — 9-job matrix (Deno 2.9 / Bun 1.3 / Node 22 × Linux/macOS/
-Windows) running unit tests; browser test split to local `test:browser`. Full
-history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
-
-**v1.1.8** (2026-06-27): **Added** — **`getMiddlewarePathsForPath`** /
-**`getMiddlewareKeysForPath`** for nested **`_middleware.ts`**. **Changed** —
-**`handleRequest`** runs root → subdirectory middleware chain (same as nested
-**`_layout`**). **Tests** — nested middleware in **`mod.test.ts`**. Full
-history: [CHANGELOG.md](./docs/en-US/CHANGELOG.md).
+**v1.2.1** (2026-08-25): **Added** — **`RouterOptions.apiOnly`** for pure API
+apps (handlers directly under `routes/`, no `api/` segment required). **Tests**
+— Deno 172 / Bun 168 / Node 172. Full history:
+[CHANGELOG.md](./docs/en-US/CHANGELOG.md) ·
+[TEST_REPORT.md](./docs/en-US/TEST_REPORT.md).
 
 ---
 
