@@ -48,7 +48,7 @@
     "@dreamer/i18n": "jsr:@dreamer/i18n@^1.1.2",
     "@dreamer/test": "jsr:@dreamer/test@^1.2.3",
     "@dreamer/runtime-adapter": "jsr:@dreamer/runtime-adapter@^1.2.2",
-    "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.1.9"
+    "@dreamer/esbuild": "jsr:@dreamer/esbuild@^1.4.0"
   },
   "nodeModulesDir": "auto",
   "minimumDependencyAge": 0,
