@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.2] - 2026-11-07
+
+### Added
+
+- **`_500` special route file**: discover `routes/_500.tsx` alongside `_404` /
+  `_error`; frameworks can prefer a dedicated HTTP 500 page via
+  `getSpecialFile("_500")`.
+
+### Tests
+
+- Unit coverage for `_500` special-file discovery (`tests/mod.test.ts`).
+
+---
+
 ## [1.2.1] - 2026-08-25
 
 ### Added
