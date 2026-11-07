@@ -7,7 +7,7 @@
  * - 文件路由系统：基于文件系统自动生成路由，文件结构即路由结构
  * - 路由类型支持：静态路由、动态路由、通配符路由、可选参数路由
  * - API 路由支持：RESTful 形式（HTTP 方法）和操作方法形式（函数名）
- * - 特殊文件处理：_app（.tsx）、_layout、_404、_error、_middleware.ts
+ * - 特殊文件处理：_app（.tsx）、_layout、_404、_500、_error、_middleware.ts
  * - 服务端路由匹配：路由参数解析、查询参数解析、SSR 支持
  * - 路由重定向：支持路由级别的重定向配置
  * - 中间件链：支持多个中间件链式执行
@@ -150,7 +150,7 @@ export interface Route {
   /** 是否为特殊文件 */
   isSpecial: boolean;
   /** 特殊文件类型（如果有） */
-  specialType?: "_app" | "_layout" | "_404" | "_error" | "_middleware";
+  specialType?: "_app" | "_layout" | "_404" | "_500" | "_error" | "_middleware";
   /** 路由元数据 */
   meta?: RouteMeta;
   /**
@@ -544,7 +544,7 @@ export class Router {
    * @returns 文件路径或 undefined
    */
   getSpecialFile(
-    type: "_app" | "_layout" | "_404" | "_error" | "_middleware",
+    type: "_app" | "_layout" | "_404" | "_500" | "_error" | "_middleware",
   ): string | undefined {
     return this.specialFiles.get(type);
   }
@@ -957,10 +957,11 @@ export class Router {
    */
   private getSpecialFileType(
     fileName: string,
-  ): "_app" | "_layout" | "_404" | "_error" | "_middleware" | undefined {
+  ): "_app" | "_layout" | "_404" | "_500" | "_error" | "_middleware" | undefined {
     if (fileName === "_app.tsx") return "_app";
     if (fileName === "_layout.tsx") return "_layout";
     if (fileName === "_404.tsx") return "_404";
+    if (fileName === "_500.tsx") return "_500";
     if (fileName === "_error.tsx") return "_error";
     if (fileName === "_middleware.ts") return "_middleware";
     return undefined;

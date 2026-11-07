@@ -111,6 +111,10 @@ describe("Router", () => {
         "export default () => <div>Error</div>;",
       );
       await writeTextFile(
+        join(testRoutesDir, "_500.tsx"),
+        "export default () => <div>500</div>;",
+      );
+      await writeTextFile(
         join(testRoutesDir, "_middleware.ts"),
         "export default () => {};",
       );
@@ -121,6 +125,7 @@ describe("Router", () => {
       expect(router.getSpecialFile("_app")).toBeTruthy();
       expect(router.getSpecialFile("_layout")).toBeTruthy();
       expect(router.getSpecialFile("_404")).toBeTruthy();
+      expect(router.getSpecialFile("_500")).toBeTruthy();
       expect(router.getSpecialFile("_error")).toBeTruthy();
       expect(router.getSpecialFile("_middleware")).toBeTruthy();
     });
@@ -510,6 +515,20 @@ describe("Router", () => {
 
       const errorFile = router.getSpecialFile("_error");
       expect(errorFile).toBeUndefined();
+      expect(router.getSpecialFile("_500")).toBeUndefined();
+    });
+
+    it("应该发现根目录 _500.tsx 特殊文件", async () => {
+      await setupTestRoutes();
+      await writeTextFile(
+        join(testRoutesDir, "_500.tsx"),
+        "export default () => <div>500</div>;",
+      );
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+      const fiveHundred = router.getSpecialFile("_500");
+      expect(fiveHundred).toBeTruthy();
+      expect(fiveHundred!.endsWith("_500.tsx")).toBe(true);
     });
   });
 
