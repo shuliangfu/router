@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Performance
+
+- After `scan()`, static routes are indexed in a `Map` so matching is O(1)
+  before scanning dynamic or wildcard routes. Dynamic param names are
+  precomputed at registration. Module-cache LRU now uses Map insertion order
+  instead of `indexOf`. The client router does the same. Dynamic, optional, and
+  wildcard routes are bucketed by first literal segment and merged with a
+  catch-all bucket in original specificity order. Redirect rules precompute
+  match data at registration and still honor first-match list order (static
+  rules are not lifted ahead of earlier wildcards).
+
+### Changed
+
+- Dependencies: `@dreamer/runtime-adapter` `^1.2.2` → `^1.2.3`, `@dreamer/i18n`
+  `^1.1.2` → `^1.1.3`, `@dreamer/test` `^1.2.3` → `^1.2.5`, `@dreamer/esbuild`
+  `^1.4.2` → `^1.5.4`. Package version remains 1.2.2; not published to JSR.
+
 ## [1.2.2] - 2026-11-07
 
 ### Added

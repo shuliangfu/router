@@ -40,7 +40,10 @@ import { $tr, type Locale } from "./i18n.ts";
 import {
   buildRouteMatchPrep,
   compareRoutesForScanOrder,
+  firstLiteralRouteSegment,
+  firstPathSegment,
   matchRoutePattern,
+  mergeByAscendingIndex,
   type RouteMatchPrep,
 } from "./core.ts";
 
@@ -74,6 +77,17 @@ export interface RedirectConfig {
   permanent?: boolean;
   /** 状态码（覆盖 permanent 设置） */
   statusCode?: 301 | 302 | 303 | 307 | 308;
+}
+
+/** 注册时预计算的重定向条目，匹配仍按列表顺序首次命中 */
+interface PreparedRedirect {
+  kind: "static" | "wildcard" | "dynamic";
+  source: string;
+  destination: string;
+  statusCode: number;
+  wildcardPrefix?: string;
+  sourceParts?: string[];
+  paramNames?: Array<string | null>;
 }
 
 /**
@@ -236,6 +250,21 @@ const MAX_MODULE_CACHE = 200;
  */
 export class Router {
   private routes: Route[] = [];
+  /** 静态页面路由：pathname → Route，请求路径 O(1) 命中 */
+  private staticPageRoutes = new Map<string, Route>();
+  /** 静态 API 路由：pathname → Route */
+  private staticApiRoutes = new Map<string, Route>();
+  /** 页面动态路由按首段字面量分桶；保持桶内特异性顺序 */
+  private dynamicPageRoutesBySegment = new Map<string, Route[]>();
+  /** 首段为参数或通配的页面路由（与字面量桶按原顺序归并） */
+  private dynamicPageCatchAll: Route[] = [];
+  /** API 动态路由按首段字面量分桶 */
+  private dynamicApiRoutesBySegment = new Map<string, Route[]>();
+  private dynamicApiCatchAll: Route[] = [];
+  /** 动态路由在扫描排序中的下标，用于归并时保持原特异性顺序 */
+  private dynamicRouteOrder = new Map<Route, number>();
+  /** 预计算后的重定向规则（保持配置顺序，首次命中有效） */
+  private redirectEntries: PreparedRedirect[] = [];
   private options:
     & Required<
       Omit<
@@ -257,9 +286,8 @@ export class Router {
       lang?: Locale;
     };
   private specialFiles: Map<string, string> = new Map();
+  /** 模块缓存；Map 插入序即 LRU 顺序（命中时 delete + set 移到最末） */
   private moduleCache: Map<string, any> = new Map();
-  /** 模块缓存访问顺序（用于 LRU 淘汰） */
-  private moduleCacheOrder: string[] = [];
   /**
    * API 文件已解析的 handlers 缓存（与 loadModule 分离；clearCache/scan 时失效）
    */
@@ -289,6 +317,7 @@ export class Router {
       debug: options.debug ?? false,
       lang: options.lang,
     };
+    this.rebuildRedirectIndex();
   }
 
   /**
@@ -318,9 +347,15 @@ export class Router {
   async scan(): Promise<void> {
     this.routes = [];
     this.specialFiles.clear();
-    // 清除缓存和 LRU 顺序
+    this.staticPageRoutes.clear();
+    this.staticApiRoutes.clear();
+    this.dynamicPageRoutesBySegment.clear();
+    this.dynamicPageCatchAll = [];
+    this.dynamicApiRoutesBySegment.clear();
+    this.dynamicApiCatchAll = [];
+    this.dynamicRouteOrder.clear();
+    // 清除缓存（Map 插入序即 LRU）
     this.moduleCache.clear();
-    this.moduleCacheOrder = [];
     this.apiHandlersCache.clear();
 
     try {
@@ -339,6 +374,7 @@ export class Router {
         { path: b.path, type: b.type, isApi: b.isApi },
       )
     );
+    this.rebuildRouteIndex();
 
     // 验证 _app 是否存在（可配置跳过）
     if (!this.options.skipAppValidation && !this.specialFiles.has("_app")) {
@@ -411,10 +447,27 @@ export class Router {
       }
     }
 
-    // 匹配普通路由
-    for (const route of this.routes) {
-      if (route.isApi) continue;
+    // 先 O(1) 命中静态页面，再按特异性扫描动态 / 通配路由
+    const staticPage = this.staticPageRoutes.get(cleanPath);
+    if (staticPage) {
+      this.debugLog("match", "matched", {
+        path: staticPage.path,
+        file: staticPage.file,
+        fullPath: staticPage.fullPath,
+        params: {},
+      });
+      return {
+        route: staticPage,
+        params: {},
+        query,
+        fullPath: pathname,
+        isApi: false,
+        meta: staticPage.meta || {},
+        load: () => this.loadModule(staticPage.fullPath),
+      };
+    }
 
+    for (const route of this.dynamicRoutesForPath(cleanPath, false)) {
       const match = this.matchRoute(route, cleanPath);
       if (match) {
         this.debugLog("match", "matched", {
@@ -507,6 +560,7 @@ export class Router {
    */
   addRedirect(config: RedirectConfig): void {
     this.options.redirects.push(config);
+    this.rebuildRedirectIndex();
   }
 
   /**
@@ -651,30 +705,23 @@ export class Router {
       this.moduleCache.has(filePath),
     );
 
-    // 检查缓存
+    // 检查缓存；delete + set 将条目移到 Map 插入序末尾（最近使用）
     if (this.moduleCache.has(filePath)) {
-      // 更新 LRU 顺序
-      const existingIndex = this.moduleCacheOrder.indexOf(filePath);
-      if (existingIndex > -1) {
-        this.moduleCacheOrder.splice(existingIndex, 1);
-      }
-      this.moduleCacheOrder.push(filePath);
-
-      return this.moduleCache.get(filePath);
+      const cached = this.moduleCache.get(filePath);
+      this.moduleCache.delete(filePath);
+      this.moduleCache.set(filePath, cached);
+      return cached;
     }
 
     const module = await this.importModule(filePath);
 
-    // 添加到缓存和 LRU 顺序
     this.moduleCache.set(filePath, module);
-    this.moduleCacheOrder.push(filePath);
 
-    // LRU 淘汰：超过限制时删除最旧的
+    // LRU 淘汰：超过限制时删除最旧的（Map 插入序最早的键）
     while (this.moduleCache.size > MAX_MODULE_CACHE) {
-      const oldest = this.moduleCacheOrder.shift();
-      if (oldest) {
-        this.moduleCache.delete(oldest);
-      }
+      const oldest = this.moduleCache.keys().next().value;
+      if (oldest === undefined) break;
+      this.moduleCache.delete(oldest);
     }
 
     return module;
@@ -688,14 +735,8 @@ export class Router {
     if (filePath) {
       this.moduleCache.delete(filePath);
       this.apiHandlersCache.delete(filePath);
-      // 从 LRU 顺序中移除
-      const index = this.moduleCacheOrder.indexOf(filePath);
-      if (index > -1) {
-        this.moduleCacheOrder.splice(index, 1);
-      }
     } else {
       this.moduleCache.clear();
-      this.moduleCacheOrder = [];
       this.apiHandlersCache.clear();
     }
   }
@@ -714,47 +755,74 @@ export class Router {
   /**
    * 检查重定向
    */
+  private rebuildRedirectIndex(): void {
+    this.redirectEntries = this.options.redirects.map((redirect) => {
+      const statusCode = redirect.statusCode ||
+        (redirect.permanent ? 301 : 302);
+      const source = redirect.source;
+      if (!source.includes(":") && !source.includes("*")) {
+        return {
+          kind: "static" as const,
+          source,
+          destination: redirect.destination,
+          statusCode,
+        };
+      }
+      if (source.endsWith("*")) {
+        return {
+          kind: "wildcard" as const,
+          source,
+          destination: redirect.destination,
+          statusCode,
+          wildcardPrefix: source.slice(0, -1),
+        };
+      }
+      const sourceParts = source.split("/").filter(Boolean);
+      return {
+        kind: "dynamic" as const,
+        source,
+        destination: redirect.destination,
+        statusCode,
+        sourceParts,
+        paramNames: sourceParts.map((part) =>
+          part.startsWith(":") ? part.slice(1) : null
+        ),
+      };
+    });
+  }
+
   private checkRedirects(
     pathname: string,
   ): { destination: string; statusCode: number } | null {
-    for (const redirect of this.options.redirects) {
-      const match = this.matchRedirectSource(redirect.source, pathname);
+    // 按配置顺序首次命中，不把静态规则提前，以免改变与通配的先后
+    for (const redirect of this.redirectEntries) {
+      const match = this.matchPreparedRedirect(redirect, pathname);
       if (match) {
-        // 替换目标路径中的参数
         let destination = redirect.destination;
         for (const [key, value] of Object.entries(match.params)) {
           destination = destination.replace(`:${key}`, value);
         }
-
-        const statusCode = redirect.statusCode ||
-          (redirect.permanent ? 301 : 302);
-        return { destination, statusCode };
+        return { destination, statusCode: redirect.statusCode };
       }
     }
     return null;
   }
 
   /**
-   * 匹配重定向源路径
+   * 用预计算条目匹配重定向源路径（语义与原 matchRedirectSource 一致）
    */
-  private matchRedirectSource(
-    source: string,
+  private matchPreparedRedirect(
+    redirect: PreparedRedirect,
     pathname: string,
   ): { params: Record<string, string> } | null {
     const params: Record<string, string> = {};
 
-    // 精确匹配
-    if (!source.includes(":") && !source.includes("*")) {
-      return source === pathname ? { params } : null;
+    if (redirect.kind === "static") {
+      return redirect.source === pathname ? { params } : null;
     }
 
-    // 动态匹配
-    const sourceParts = source.split("/").filter(Boolean);
-    const pathParts = pathname.split("/").filter(Boolean);
-
-    // 通配符
-    if (source.endsWith("*")) {
-      const prefix = source.slice(0, -1);
+    if (redirect.kind === "wildcard") {
+      const prefix = redirect.wildcardPrefix ?? "";
       if (pathname.startsWith(prefix)) {
         params["*"] = pathname.slice(prefix.length);
         return { params };
@@ -762,16 +830,18 @@ export class Router {
       return null;
     }
 
+    const sourceParts = redirect.sourceParts ?? [];
+    const pathParts = pathname.split("/").filter(Boolean);
     if (sourceParts.length !== pathParts.length) {
       return null;
     }
 
+    const paramNames = redirect.paramNames ?? [];
     for (let i = 0; i < sourceParts.length; i++) {
-      const sourcePart = sourceParts[i];
-      const pathPart = pathParts[i];
-
-      if (sourcePart.startsWith(":")) {
-        const paramName = sourcePart.slice(1);
+      const sourcePart = sourceParts[i]!;
+      const pathPart = pathParts[i]!;
+      const paramName = paramNames[i];
+      if (paramName != null) {
         params[paramName] = pathPart;
       } else if (sourcePart !== pathPart) {
         return null;
@@ -957,7 +1027,14 @@ export class Router {
    */
   private getSpecialFileType(
     fileName: string,
-  ): "_app" | "_layout" | "_404" | "_500" | "_error" | "_middleware" | undefined {
+  ):
+    | "_app"
+    | "_layout"
+    | "_404"
+    | "_500"
+    | "_error"
+    | "_middleware"
+    | undefined {
     if (fileName === "_app.tsx") return "_app";
     if (fileName === "_layout.tsx") return "_layout";
     if (fileName === "_404.tsx") return "_404";
@@ -1074,49 +1151,138 @@ export class Router {
   }
 
   /**
+   * scan() 排序后重建静态 Map 与动态列表，供 match / matchApiRoute 使用。
+   * 同路径多条静态路由保留排序后的第一条（与原线性扫描首次命中一致）。
+   */
+  private rebuildRouteIndex(): void {
+    this.staticPageRoutes.clear();
+    this.staticApiRoutes.clear();
+    this.dynamicPageRoutesBySegment.clear();
+    this.dynamicPageCatchAll = [];
+    this.dynamicApiRoutesBySegment.clear();
+    this.dynamicApiCatchAll = [];
+    this.dynamicRouteOrder.clear();
+    let dynamicIndex = 0;
+    for (const route of this.routes) {
+      if (route.type === "static") {
+        const map = route.isApi ? this.staticApiRoutes : this.staticPageRoutes;
+        if (!map.has(route.path)) map.set(route.path, route);
+        continue;
+      }
+      this.dynamicRouteOrder.set(route, dynamicIndex++);
+      const segment = firstLiteralRouteSegment(route.path);
+      if (route.isApi) {
+        if (segment == null) this.dynamicApiCatchAll.push(route);
+        else {
+          let bucket = this.dynamicApiRoutesBySegment.get(segment);
+          if (!bucket) {
+            bucket = [];
+            this.dynamicApiRoutesBySegment.set(segment, bucket);
+          }
+          bucket.push(route);
+        }
+      } else if (segment == null) {
+        this.dynamicPageCatchAll.push(route);
+      } else {
+        let bucket = this.dynamicPageRoutesBySegment.get(segment);
+        if (!bucket) {
+          bucket = [];
+          this.dynamicPageRoutesBySegment.set(segment, bucket);
+        }
+        bucket.push(route);
+      }
+    }
+  }
+
+  /**
+   * 只扫描与 pathname 首段相关的动态路由，再与兜底桶按原特异性顺序归并。
+   */
+  private dynamicRoutesForPath(pathname: string, isApi: boolean): Route[] {
+    const bySegment = isApi
+      ? this.dynamicApiRoutesBySegment
+      : this.dynamicPageRoutesBySegment;
+    const catchAll = isApi ? this.dynamicApiCatchAll : this.dynamicPageCatchAll;
+    const first = firstPathSegment(pathname);
+    const bucket = first ? (bySegment.get(first) ?? []) : [];
+    return mergeByAscendingIndex(
+      bucket,
+      catchAll,
+      (route) => this.dynamicRouteOrder.get(route) ?? 0,
+    );
+  }
+
+  /**
    * 匹配 API 路由
    */
   private async matchApiRoute(
     pathname: string,
     method?: string,
   ): Promise<RouteMatch | null> {
-    for (const route of this.routes) {
-      if (!route.isApi) continue;
+    const staticApi = this.staticApiRoutes.get(pathname);
+    if (staticApi) {
+      const matched = await this.matchApiHandlers(
+        staticApi,
+        {},
+        pathname,
+        method,
+      );
+      if (matched) return matched;
+    }
 
+    for (const route of this.dynamicRoutesForPath(pathname, true)) {
       const match = this.matchRoute(route, pathname);
       if (match) {
-        const handlers = await this.loadApiHandlers(route.fullPath);
-        if (!handlers) continue;
-
-        if (this.options.apiMode === "restful") {
-          if (method && handlers[method.toUpperCase()]) {
-            return {
-              route,
-              params: match.params,
-              query: {},
-              fullPath: pathname,
-              isApi: true,
-              meta: route.meta || {},
-              handlers: {
-                [method.toUpperCase()]: handlers[method.toUpperCase()],
-              },
-            };
-          }
-        } else {
-          return {
-            route,
-            params: match.params,
-            query: {},
-            fullPath: pathname,
-            isApi: true,
-            meta: route.meta || {},
-            handlers,
-          };
-        }
+        const matched = await this.matchApiHandlers(
+          route,
+          match.params,
+          pathname,
+          method,
+        );
+        if (matched) return matched;
       }
     }
 
     return null;
+  }
+
+  /**
+   * 按 API 模式加载并筛选 handlers；restful 下方法不匹配时返回 null，以便继续下一条路由。
+   */
+  private async matchApiHandlers(
+    route: Route,
+    params: Record<string, string>,
+    pathname: string,
+    method?: string,
+  ): Promise<RouteMatch | null> {
+    const handlers = await this.loadApiHandlers(route.fullPath);
+    if (!handlers) return null;
+
+    if (this.options.apiMode === "restful") {
+      if (method && handlers[method.toUpperCase()]) {
+        return {
+          route,
+          params,
+          query: {},
+          fullPath: pathname,
+          isApi: true,
+          meta: route.meta || {},
+          handlers: {
+            [method.toUpperCase()]: handlers[method.toUpperCase()],
+          },
+        };
+      }
+      return null;
+    }
+
+    return {
+      route,
+      params,
+      query: {},
+      fullPath: pathname,
+      isApi: true,
+      meta: route.meta || {},
+      handlers,
+    };
   }
 
   /**

@@ -1214,3 +1214,24 @@ describe("Router hooks without global instance (SSR-safe)", () => {
     expect(useRouter()).toBeNull();
   });
 });
+
+describe("ClientRouter - 动态路由首段分桶", () => {
+  it("应按首段分桶匹配，且可选参数仍优先于同首段通配符", () => {
+    const router = createRouter({
+      routes: [
+        { path: "/:page?", component: "optional", type: "optional" },
+        { path: "/blog/:id", component: "blog-id", type: "dynamic" },
+        { path: "/docs/:id", component: "docs-id", type: "dynamic" },
+        { path: "/blog/*", component: "blog-wild", type: "wildcard" },
+      ],
+    });
+
+    expect(router.match("/blog/42")?.route.path).toBe("/blog/:id");
+    expect(router.match("/docs/7")?.route.path).toBe("/docs/:id");
+    expect(router.match("/about")?.route.path).toBe("/:page?");
+    expect(router.match("/about")?.params.page).toBe("about");
+    // 可选 /:page? 比通配 /blog/* 更具体，/blog 应命中可选
+    expect(router.match("/blog")?.route.type).toBe("optional");
+    expect(router.match("/blog/a/b")?.route.type).toBe("wildcard");
+  });
+});

@@ -21,6 +21,8 @@ export type MatchRouteType =
 export interface RouteMatchPrep {
   /** route.path 按 `/` 切分且去空 */
   routeParts: string[];
+  /** 与 routeParts 对齐；字面量为 null，动态段为已去掉 `:` / `?` 的参数名 */
+  paramNames: Array<string | null>;
   /** wildcard：去掉末尾 `/*` 后的前缀 */
   wildcardPrefix?: string;
   /** optional：去掉末尾 `/:param?` 的基路径 */
@@ -43,10 +45,12 @@ export function buildRouteMatchPrep(
   }
 
   const routeParts = routePath.split("/").filter(Boolean);
+  const paramNames = routeParts.map(paramNameFromSegment);
 
   if (routeType === "wildcard") {
     return {
       routeParts,
+      paramNames,
       wildcardPrefix: routePath.replace("/*", ""),
     };
   }
@@ -54,11 +58,18 @@ export function buildRouteMatchPrep(
   if (routeType === "optional") {
     return {
       routeParts,
+      paramNames,
       optionalBasePath: routePath.replace(/\/:[^?]+(\?)?$/, ""),
     };
   }
 
-  return { routeParts };
+  return { routeParts, paramNames };
+}
+
+/** 动态段返回参数名，字面量返回 null（注册时计算，避免请求路径上的正则替换） */
+function paramNameFromSegment(segment: string): string | null {
+  if (!segment.startsWith(":")) return null;
+  return segment.endsWith("?") ? segment.slice(1, -1) : segment.slice(1);
 }
 
 /**
@@ -110,9 +121,11 @@ export function matchRoutePattern(
     const routePart = routeParts[i];
     const pathPart = pathParts[i];
 
-    if (routePart.startsWith(":")) {
-      const paramName = routePart.replace(/^:/, "").replace(/\?$/, "");
+    const paramName = prep?.paramNames?.[i];
+    if (paramName != null) {
       params[paramName] = pathPart;
+    } else if (routePart.startsWith(":")) {
+      params[paramNameFromSegment(routePart) ?? routePart.slice(1)] = pathPart;
     } else if (routePart !== pathPart) {
       return null;
     }
@@ -217,4 +230,51 @@ export function compareRoutesForScanOrder(
   const cmp = compareSpecificityTuples(ta, tb);
   if (cmp !== 0) return cmp;
   return a.path.localeCompare(b.path);
+}
+
+/**
+ * 路由模式的首段字面量。首段为参数或通配时返回 null（需放入兜底桶）。
+ */
+export function firstLiteralRouteSegment(routePath: string): string | null {
+  const first = routePath.split("/").filter(Boolean)[0];
+  if (!first) return null;
+  if (first === "*" || first.startsWith(":") || first.endsWith("*")) {
+    return null;
+  }
+  return first;
+}
+
+/**
+ * 实际 pathname 的第一段（无则 undefined，如 "/"）。
+ */
+export function firstPathSegment(pathname: string): string | undefined {
+  return pathname.split("/").filter(Boolean)[0];
+}
+
+/**
+ * 合并两份已按同一升序下标排列的列表，保持全局特异性顺序。
+ * 用于「字面量首段桶 + 首段为参数/通配的兜底桶」。
+ */
+export function mergeByAscendingIndex<T>(
+  a: T[],
+  b: T[],
+  indexOf: (item: T) => number,
+): T[] {
+  if (a.length === 0) return b;
+  if (b.length === 0) return a;
+  const out: T[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (indexOf(a[i]!) <= indexOf(b[j]!)) {
+      out.push(a[i]!);
+      i++;
+    } else {
+      out.push(b[j]!);
+      j++;
+    }
+  }
+  while (i < a.length) out.push(a[i++]!);
+  while (j < b.length) out.push(b[j++]!);
+  return out;
 }

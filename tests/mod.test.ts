@@ -424,6 +424,88 @@ describe("Router", () => {
       expect(match).toBeNull();
     });
 
+    it("大量静态路由中应精确命中静态页，且优先于通配符", async () => {
+      await setupTestRoutes();
+      for (let i = 0; i < 40; i++) {
+        await writeTextFile(
+          join(testRoutesDir, `page-${i}.tsx`),
+          `export default () => <div>Page ${i}</div>;`,
+        );
+      }
+      await writeTextFile(
+        join(testRoutesDir, "[...slug].tsx"),
+        "export default () => <div>Catch all</div>;",
+      );
+
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const staticMatch = await router.match("/page-27");
+      expect(staticMatch).toBeTruthy();
+      expect(staticMatch?.route.path).toBe("/page-27");
+      expect(staticMatch?.route.type).toBe("static");
+
+      const wildcardMatch = await router.match("/not-a-static-page/extra");
+      expect(wildcardMatch).toBeTruthy();
+      expect(wildcardMatch?.route.type).toBe("wildcard");
+    });
+
+    it("动态路由应按首段分桶：/blog/:id 不抢 /docs/:id，/:page 仍能匹配其它首段", async () => {
+      await setupTestRoutes();
+      await mkdir(join(testRoutesDir, "blog"), { recursive: true });
+      await mkdir(join(testRoutesDir, "docs"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "blog", "[id].tsx"),
+        "export default () => <div>Blog</div>;",
+      );
+      await writeTextFile(
+        join(testRoutesDir, "docs", "[id].tsx"),
+        "export default () => <div>Docs</div>;",
+      );
+      await writeTextFile(
+        join(testRoutesDir, "[page].tsx"),
+        "export default () => <div>Page</div>;",
+      );
+
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const blog = await router.match("/blog/42");
+      expect(blog?.route.path).toBe("/blog/:id");
+      expect(blog?.params.id).toBe("42");
+
+      const docs = await router.match("/docs/7");
+      expect(docs?.route.path).toBe("/docs/:id");
+      expect(docs?.params.id).toBe("7");
+
+      const other = await router.match("/about");
+      expect(other?.route.path).toBe("/:page");
+      expect(other?.params.page).toBe("about");
+    });
+
+    it("可选参数路由应先于同首段通配符（/:id? 优先于 /blog/* 匹配 /blog）", async () => {
+      await setupTestRoutes();
+      await mkdir(join(testRoutesDir, "blog"), { recursive: true });
+      await writeTextFile(
+        join(testRoutesDir, "[[page]].tsx"),
+        "export default () => <div>Optional</div>;",
+      );
+      await writeTextFile(
+        join(testRoutesDir, "blog", "[...slug].tsx"),
+        "export default () => <div>Blog wild</div>;",
+      );
+
+      const router = new Router({ routesDir: testRoutesDir });
+      await router.scan();
+
+      const optional = await router.match("/blog");
+      expect(optional?.route.type).toBe("optional");
+      expect(optional?.params.page).toBe("blog");
+
+      const wild = await router.match("/blog/a/b");
+      expect(wild?.route.type).toBe("wildcard");
+    });
+
     it("应该匹配 API 路由", async () => {
       await setupTestRoutes();
       await mkdir(join(testRoutesDir, "api"), { recursive: true });
@@ -811,6 +893,40 @@ describe("Router - 新功能测试", () => {
       router.addRedirect({ source: "/dynamic", destination: "/" });
       const match = await router.match("/dynamic");
       expect(match?.redirect).toBeDefined();
+    });
+
+    it("重定向应按配置顺序首次命中：通配在前时优先于后续字面量", async () => {
+      await setupTestRoutes();
+      const router = createRouter({
+        routesDir: testRoutesDir,
+        redirects: [
+          { source: "/blog/*", destination: "/wild" },
+          { source: "/blog/special", destination: "/literal" },
+        ],
+      });
+      await router.scan();
+
+      const special = await router.match("/blog/special");
+      expect(special?.redirect?.destination).toBe("/wild");
+      const other = await router.match("/blog/other");
+      expect(other?.redirect?.destination).toBe("/wild");
+    });
+
+    it("重定向应按配置顺序首次命中：字面量在前时只拦截精确路径", async () => {
+      await setupTestRoutes();
+      const router = createRouter({
+        routesDir: testRoutesDir,
+        redirects: [
+          { source: "/blog/special", destination: "/literal" },
+          { source: "/blog/*", destination: "/wild" },
+        ],
+      });
+      await router.scan();
+
+      const special = await router.match("/blog/special");
+      expect(special?.redirect?.destination).toBe("/literal");
+      const other = await router.match("/blog/other");
+      expect(other?.redirect?.destination).toBe("/wild");
     });
   });
 

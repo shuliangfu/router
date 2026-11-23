@@ -38,7 +38,10 @@
 import {
   buildRouteMatchPrep,
   compareRoutesForScanOrder,
+  firstLiteralRouteSegment,
+  firstPathSegment,
   matchRoutePattern,
+  mergeByAscendingIndex,
   type RouteMatchPrep,
 } from "../core.ts";
 
@@ -308,10 +311,13 @@ export class ClientRouter {
   private componentLoader: ComponentLoader | null = null;
   private componentCache: Map<string, unknown> = new Map();
   private scrollPositions: Map<string, ScrollPosition> = new Map();
-  /** 滚动位置访问顺序（用于 LRU 淘汰） */
-  private scrollPositionOrder: string[] = [];
-  /** 组件缓存访问顺序（用于 LRU 淘汰） */
-  private componentCacheOrder: string[] = [];
+  /** 静态路由：pathname → ClientRoute，match 热路径 O(1) */
+  private staticRoutes = new Map<string, ClientRoute>();
+  /** 动态路由按首段字面量分桶；保持桶内特异性顺序 */
+  private dynamicRoutesBySegment = new Map<string, ClientRoute[]>();
+  /** 首段为参数或通配的动态路由 */
+  private dynamicCatchAll: ClientRoute[] = [];
+  private dynamicRouteOrder = new Map<ClientRoute, number>();
   /** 每条 ClientRoute 的匹配预计算（与 match-route-core 对齐） */
   private routeMatchPrepByRoute = new WeakMap<
     ClientRoute,
@@ -372,6 +378,50 @@ export class ClientRouter {
         { path: a.path, type: a.type ?? "static", isApi: false },
         { path: b.path, type: b.type ?? "static", isApi: false },
       )
+    );
+    this.rebuildRouteIndex();
+  }
+
+  /**
+   * 排序后重建静态 Map 与动态列表。同路径多条静态路由保留第一条。
+   */
+  private rebuildRouteIndex(): void {
+    this.staticRoutes.clear();
+    this.dynamicRoutesBySegment.clear();
+    this.dynamicCatchAll = [];
+    this.dynamicRouteOrder.clear();
+    let dynamicIndex = 0;
+    for (const route of this.routes) {
+      const type = route.type ?? "static";
+      if (type === "static") {
+        if (!this.staticRoutes.has(route.path)) {
+          this.staticRoutes.set(route.path, route);
+        }
+        continue;
+      }
+      this.dynamicRouteOrder.set(route, dynamicIndex++);
+      const segment = firstLiteralRouteSegment(route.path);
+      if (segment == null) {
+        this.dynamicCatchAll.push(route);
+      } else {
+        let bucket = this.dynamicRoutesBySegment.get(segment);
+        if (!bucket) {
+          bucket = [];
+          this.dynamicRoutesBySegment.set(segment, bucket);
+        }
+        bucket.push(route);
+      }
+    }
+  }
+
+  /** 只扫描与 pathname 首段相关的动态路由，再与兜底桶按原特异性顺序归并。 */
+  private dynamicRoutesForPath(pathname: string): ClientRoute[] {
+    const first = firstPathSegment(pathname);
+    const bucket = first ? (this.dynamicRoutesBySegment.get(first) ?? []) : [];
+    return mergeByAscendingIndex(
+      bucket,
+      this.dynamicCatchAll,
+      (route) => this.dynamicRouteOrder.get(route) ?? 0,
     );
   }
 
@@ -537,31 +587,38 @@ export class ClientRouter {
     const cleanPath = url.pathname;
     const hash = url.hash;
 
-    // 匹配路由
-    for (const route of this.routes) {
+    const toMatchResult = (
+      route: ClientRoute,
+      params: Record<string, string>,
+    ): ClientRouteMatch | null => {
+      if (route.redirect) {
+        return this.match(route.redirect);
+      }
+      this.debugLog("match", "matched", {
+        path: route.path,
+        component: route.component,
+        params,
+      });
+      return {
+        route,
+        params,
+        query,
+        fullPath: pathname,
+        hash,
+        meta: route.meta || {},
+        load: () => this.loadComponent(route.component),
+      };
+    };
+
+    const staticRoute = this.staticRoutes.get(cleanPath);
+    if (staticRoute) {
+      return toMatchResult(staticRoute, {});
+    }
+
+    for (const route of this.dynamicRoutesForPath(cleanPath)) {
       const matchResult = this.matchRoute(route, cleanPath);
       if (matchResult) {
-        // 检查重定向
-        if (route.redirect) {
-          // 递归匹配重定向目标
-          return this.match(route.redirect);
-        }
-
-        this.debugLog("match", "matched", {
-          path: route.path,
-          component: route.component,
-          params: matchResult.params,
-        });
-
-        return {
-          route,
-          params: matchResult.params,
-          query,
-          fullPath: pathname,
-          hash,
-          meta: route.meta || {},
-          load: () => this.loadComponent(route.component),
-        };
+        return toMatchResult(route, matchResult.params);
       }
     }
 
@@ -821,6 +878,7 @@ export class ClientRouter {
     const index = this.routes.findIndex((r) => r.path === path);
     if (index > -1) {
       this.routes.splice(index, 1);
+      this.rebuildRouteIndex();
       return true;
     }
     return false;
@@ -833,14 +891,8 @@ export class ClientRouter {
   clearCache(component?: string): void {
     if (component) {
       this.componentCache.delete(component);
-      // 从 LRU 顺序中移除
-      const index = this.componentCacheOrder.indexOf(component);
-      if (index > -1) {
-        this.componentCacheOrder.splice(index, 1);
-      }
     } else {
       this.componentCache.clear();
-      this.componentCacheOrder = [];
     }
   }
 
@@ -851,14 +903,8 @@ export class ClientRouter {
   clearScrollPositions(path?: string): void {
     if (path) {
       this.scrollPositions.delete(path);
-      // 从 LRU 顺序中移除
-      const index = this.scrollPositionOrder.indexOf(path);
-      if (index > -1) {
-        this.scrollPositionOrder.splice(index, 1);
-      }
     } else {
       this.scrollPositions.clear();
-      this.scrollPositionOrder = [];
     }
   }
 
@@ -899,11 +945,9 @@ export class ClientRouter {
     this.currentMatch = null;
     this.componentLoader = null;
 
-    // 清除缓存和 LRU 顺序数组
+    // 清除缓存（Map 插入序即 LRU）
     this.componentCache.clear();
-    this.componentCacheOrder = [];
     this.scrollPositions.clear();
-    this.scrollPositionOrder = [];
 
     this.isStarted = false;
 
@@ -1280,23 +1324,18 @@ export class ClientRouter {
     if (
       browserGlobal.scrollX !== undefined && browserGlobal.scrollY !== undefined
     ) {
-      // 更新 LRU 顺序
-      const existingIndex = this.scrollPositionOrder.indexOf(path);
-      if (existingIndex > -1) {
-        this.scrollPositionOrder.splice(existingIndex, 1);
+      if (this.scrollPositions.has(path)) {
+        this.scrollPositions.delete(path);
       }
-      this.scrollPositionOrder.push(path);
-
       this.scrollPositions.set(path, {
         left: browserGlobal.scrollX,
         top: browserGlobal.scrollY,
       });
 
       while (this.scrollPositions.size > MAX_SCROLL_POSITIONS) {
-        const oldest = this.scrollPositionOrder.shift();
-        if (oldest) {
-          this.scrollPositions.delete(oldest);
-        }
+        const oldest = this.scrollPositions.keys().next().value;
+        if (oldest === undefined) break;
+        this.scrollPositions.delete(oldest);
       }
     }
   }
@@ -1435,28 +1474,20 @@ export class ClientRouter {
 
     // 检查缓存
     if (this.componentCache.has(component)) {
-      // 更新 LRU 顺序
-      const existingIndex = this.componentCacheOrder.indexOf(component);
-      if (existingIndex > -1) {
-        this.componentCacheOrder.splice(existingIndex, 1);
-      }
-      this.componentCacheOrder.push(component);
-
-      return this.componentCache.get(component);
+      const cached = this.componentCache.get(component);
+      this.componentCache.delete(component);
+      this.componentCache.set(component, cached);
+      return cached;
     }
 
     if (this.componentLoader) {
       const module = await this.componentLoader(component);
-      // 添加到缓存和 LRU 顺序
       this.componentCache.set(component, module);
-      this.componentCacheOrder.push(component);
 
-      // LRU 淘汰：超过限制时删除最旧的
       while (this.componentCache.size > MAX_COMPONENT_CACHE) {
-        const oldest = this.componentCacheOrder.shift();
-        if (oldest) {
-          this.componentCache.delete(oldest);
-        }
+        const oldest = this.componentCache.keys().next().value;
+        if (oldest === undefined) break;
+        this.componentCache.delete(oldest);
       }
 
       return module;
