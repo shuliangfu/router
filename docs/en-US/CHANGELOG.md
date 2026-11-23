@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [1.2.3] - 2026-11-23
 
 ### Performance
 
@@ -24,7 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Dependencies: `@dreamer/runtime-adapter` `^1.2.2` → `^1.2.3`, `@dreamer/i18n`
   `^1.1.2` → `^1.1.3`, `@dreamer/test` `^1.2.3` → `^1.2.5`, `@dreamer/esbuild`
-  `^1.4.2` → `^1.5.4`. Package version remains 1.2.2; not published to JSR.
+  `^1.4.2` → `^1.5.4`.
+
+---
 
 ## [1.2.2] - 2026-11-07
 

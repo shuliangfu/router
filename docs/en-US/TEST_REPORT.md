@@ -2,39 +2,38 @@
 
 ## Test Overview
 
-| Item                 | Info                                                               |
-| -------------------- | ------------------------------------------------------------------ |
-| Test library version | @dreamer/test@^1.2.3                                               |
-| Runtime adapter      | @dreamer/runtime-adapter@^1.2.2                                    |
-| Test framework       | @dreamer/test (describe/it/expect)                                 |
-| Test date            | 2026-08-25                                                         |
-| Test environment     | Deno 2.x + Bun 1.x + Node.js 22+ (unit); Puppeteer (local browser) |
+| Item                 | Info                                            |
+| -------------------- | ----------------------------------------------- |
+| Test library version | @dreamer/test@^1.2.5                            |
+| Runtime adapter      | @dreamer/runtime-adapter@^1.2.3                 |
+| Test framework       | @dreamer/test (describe/it/expect)              |
+| Test date            | 2026-11-23                                      |
+| Test environment     | Deno 2.9.8 + Bun 1.4.5 + Node.js 22.22.2 (unit) |
 
 ## Test Results
 
 ### Overall Statistics (unit suite, run in CI)
 
-| Metric         | Value                                                   |
-| -------------- | ------------------------------------------------------- |
-| Total tests    | 168 unit (Deno/Node report 172 incl. 4 lifecycle hooks) |
-| Passed         | Deno 172 / Bun 168 / Node 172                           |
-| Failed         | 0                                                       |
-| Pass rate      | 100%                                                    |
-| Execution time | ~0.5–0.8s unit suite (per runtime)                      |
+| Metric         | Value                                                |
+| -------------- | ---------------------------------------------------- |
+| Total tests    | 175 unit (Deno reports 179, incl. 4 lifecycle hooks) |
+| Passed         | Deno 179 / Bun 175 / Node 175                        |
+| Failed         | 0                                                    |
+| Pass rate      | 100%                                                 |
+| Execution time | ~0.5–0.8s unit suite (per runtime)                   |
 
 The four unit test files (`mod`, `client`, `nav-match`, `specificity-sort`) are
-run in CI on all three runtimes. Deno (and Node via the same `@dreamer/test`
-runner) additionally counts the `@dreamer/test cleanup browsers` lifecycle hook
-as a test (once per file → +4), which is why Deno/Node report 172 while Bun
-reports 168. **v1.2.1** adds one `apiOnly` case in `mod.test.ts`.
+run in CI on all three runtimes. Deno additionally counts the
+`@dreamer/test cleanup browsers` lifecycle hook as a test (once per file → +4),
+which is why Deno reports 179 while Bun and Node report 175.
 
 ### Runtime Compatibility
 
 | Runtime | Tests (reported) | Passed | Status |
 | ------- | ---------------- | ------ | ------ |
-| Deno    | 172              | 172    | ✅     |
-| Bun     | 168              | 168    | ✅     |
-| Node.js | 172              | 172    | ✅     |
+| Deno    | 179              | 179    | ✅     |
+| Bun     | 175              | 175    | ✅     |
+| Node.js | 175              | 175    | ✅     |
 
 ### Test File Statistics
 
